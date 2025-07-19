@@ -15,8 +15,10 @@ public class Mission {
     private String name;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "mission_rank")
     private Rank rank;
 
+    @Column(name = "assigned_to")
     private String assignedTo;
     private boolean completed;
 }
