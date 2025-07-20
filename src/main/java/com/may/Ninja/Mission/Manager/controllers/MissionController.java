@@ -34,4 +34,10 @@ public class MissionController {
         MissionResponse response = missionService.addMission(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<MissionResponse> updateMission(@PathVariable Long id, @Valid @RequestBody MissionRequest request){
+        MissionResponse updatedMission = missionService.updateMission(id, request);
+        return ResponseEntity.ok(updatedMission);
+    }
 }
