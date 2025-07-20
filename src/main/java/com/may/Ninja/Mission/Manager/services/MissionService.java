@@ -1,6 +1,7 @@
 package com.may.Ninja.Mission.Manager.services;
 
 import com.may.Ninja.Mission.Manager.dtos.MissionMapper;
+import com.may.Ninja.Mission.Manager.dtos.MissionRequest;
 import com.may.Ninja.Mission.Manager.dtos.MissionResponse;
 import com.may.Ninja.Mission.Manager.models.Mission;
 import com.may.Ninja.Mission.Manager.repositories.MissionRepository;
@@ -28,5 +29,11 @@ public class MissionService {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mission not found with id " + id));
         return MissionMapper.entityToDto(mission);
+    }
+
+    public MissionResponse addMission(MissionRequest request){
+        Mission newMission = MissionMapper.dtoToEntity(request);
+        Mission savedMission = missionRepository.save(newMission);
+        return MissionMapper.entityToDto(savedMission);
     }
 }
