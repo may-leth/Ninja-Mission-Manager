@@ -13,10 +13,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -48,6 +48,13 @@ public class MissionControllerIntegrationTest {
         } catch (Exception exception) {
             throw new RuntimeException("Failed to convert object to JSON string for testing", exception);
         }
+    }
+
+    //método para evitar repetirse
+    private ResultActions performPutRequest(String url, Object body) throws Exception {
+        return mockMvc.perform(put(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(body)));
     }
 
     @Test
@@ -122,6 +129,84 @@ public class MissionControllerIntegrationTest {
             mockMvc.perform(post("/missions")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(asJsonString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("PUT /missions/{id} Update Existing Missions")
+    class UpdateMissionsTest{
+
+        private Long existingMissionId = 1L;
+
+        @Test
+        @DisplayName("Should update an existing mission correctly and return 200 OK")
+        void updateMission_ReturnsOkAndUpdatedMission() throws Exception{
+            MissionRequest updateRequest = new MissionRequest(
+                    "Proteger al constructor de puentes de Tazuna V2",
+                    Rank.S,
+                    "Equipo 7: Naruto, Sasuke, Sakura, Kakashi",
+                    true
+            );
+
+            performPutRequest("/missions/" + existingMissionId, updateRequest)
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id", is(1)))
+                    .andExpect(jsonPath("$.name", is(updateRequest.name())))
+                    .andExpect(jsonPath("$.rank", is(updateRequest.rank().toString())))
+                    .andExpect(jsonPath("$.assignedTo", is(updateRequest.assignedTo())))
+                    .andExpect(jsonPath("$.completed", is(updateRequest.completed())));
+
+            mockMvc.perform(get("/missions/" + existingMissionId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name", is(updateRequest.name())))
+                    .andExpect(jsonPath("$.rank", is(updateRequest.rank().toString())))
+                    .andExpect(jsonPath("$.completed", is(updateRequest.completed())));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found if mission to update does not exist")
+        void updateMission_ReturnsNotFound_WhenIdDoesNotExist() throws Exception{
+            Long nonExistenId = 999L;
+            MissionRequest updateRequest = new MissionRequest(
+                    "Misión inexistente", Rank.D, "nadie", false
+            );
+
+            performPutRequest("/missions/" + nonExistenId, updateRequest)
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request if the name is missing in update request")
+        void updateMission_ReturnsBadRequest_WhenNameIsMissing() throws Exception{
+            MissionRequest invalidRequest = new MissionRequest(
+                    "",Rank.C, "Naruto Uzumaki", false
+            );
+
+            performPutRequest("/missions/" + existingMissionId, invalidRequest)
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request if the rank is missing in update request")
+        void updateMission_ReturnsBadRequest_WhenRankIsMissing() throws Exception{
+            MissionRequest invalidRequest = new MissionRequest(
+                    "Misión importante", null, "Sasuke Uchiha", false
+            );
+
+            performPutRequest("/missions/" + existingMissionId, invalidRequest)
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request if the assignedTo field is missing in update request")
+        void updateMission_ReturnsBadRequest_WhenAssignedToIsMissing() throws Exception {
+            MissionRequest invalidRequest = new MissionRequest(
+                    "Misión de entrenamiento", Rank.D, null, false
+            );
+
+            performPutRequest("/missions/" + existingMissionId, invalidRequest)
                     .andExpect(status().isBadRequest());
         }
     }
