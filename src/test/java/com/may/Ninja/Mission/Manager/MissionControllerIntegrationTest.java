@@ -50,11 +50,15 @@ public class MissionControllerIntegrationTest {
         }
     }
 
-    //método para evitar repetirse
+    //métodos para evitar repetirse
     private ResultActions performPutRequest(String url, Object body) throws Exception {
         return mockMvc.perform(put(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(asJsonString(body)));
+    }
+
+    private ResultActions performDeleteRequest(String url) throws Exception{
+        return mockMvc.perform(delete(url));
     }
 
     @Test
@@ -211,4 +215,38 @@ public class MissionControllerIntegrationTest {
         }
     }
 
+    @Nested
+    @DisplayName("DELETE /missions/{id} Delete Existing Missions")
+    class DeleteMissionsTests {
+        private Long existingMissionIdToDelete = 2L;
+
+        @Test
+        @DisplayName("Should delete an existing mission and return 200 OK with deleted mission JSON")
+        void deleteMission_ReturnsOkAndDeletedMission() throws Exception {
+            mockMvc.perform(get("/missions/" + existingMissionIdToDelete))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name", is("Capturar al gato del Señor Feudal")));
+
+            performDeleteRequest("/missions/" + existingMissionIdToDelete)
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id", is(existingMissionIdToDelete.intValue())))
+                    .andExpect(jsonPath("$.name", is("Capturar al gato del Señor Feudal")))
+                    .andExpect(jsonPath("$.rank", is("D")))
+                    .andExpect(jsonPath("$.assignedTo", is("Naruto Uzumaki")))
+                    .andExpect(jsonPath("$.completed", is(true)));
+
+            mockMvc.perform(get("/missions/" + existingMissionIdToDelete))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found if mission to delete does not exist")
+        void deleteMission_ReturnsNotFound_WhenIdDoesNotExist() throws Exception {
+            Long nonExistentId = 999L;
+
+            performDeleteRequest("/missions/" + nonExistentId)
+                    .andExpect(status().isNotFound());
+        }
+    }
 }
