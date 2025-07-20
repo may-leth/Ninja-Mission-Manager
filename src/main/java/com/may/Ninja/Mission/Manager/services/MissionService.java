@@ -51,4 +51,13 @@ public class MissionService {
         Mission savedMission = missionRepository.save(missionToUpdate);
         return MissionMapper.entityToDto(savedMission);
     }
+
+    @Transactional
+    public MissionResponse deleteMission(Long id){
+        Mission missionToDelete = missionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mission not found with id " + id));
+
+        missionRepository.delete(missionToDelete);
+        return MissionMapper.entityToDto(missionToDelete);
+    }
 }

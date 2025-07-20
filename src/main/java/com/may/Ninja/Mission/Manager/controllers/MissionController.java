@@ -40,4 +40,10 @@ public class MissionController {
         MissionResponse updatedMission = missionService.updateMission(id, request);
         return ResponseEntity.ok(updatedMission);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<MissionResponse> deleteMission(@PathVariable Long id){
+        MissionResponse deletedMission = missionService.deleteMission(id);
+        return ResponseEntity.ok(deletedMission);
+    }
 }
