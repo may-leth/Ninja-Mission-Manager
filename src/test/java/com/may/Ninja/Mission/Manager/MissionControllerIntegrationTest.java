@@ -50,9 +50,14 @@ public class MissionControllerIntegrationTest {
         }
     }
 
-    //métodos para evitar repetirse
     private ResultActions performPutRequest(String url, Object body) throws Exception {
         return mockMvc.perform(put(url)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(asJsonString(body)));
+    }
+
+    private ResultActions performPostRequest(String url, Object body) throws Exception {
+        return mockMvc.perform(post(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(asJsonString(body)));
     }
@@ -96,9 +101,7 @@ public class MissionControllerIntegrationTest {
         @Test
         @DisplayName("should create a mission correctly and return a 201")
         void addMission_returnsCreatedMission() throws Exception{
-            mockMvc.perform(post("/missions")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(asJsonString(validRequest)))
+            performPostRequest("/missions", validRequest)
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.name", is(validRequest.name())))
                     .andExpect(jsonPath("$.rank", is(validRequest.rank().toString())))
@@ -110,9 +113,7 @@ public class MissionControllerIntegrationTest {
         @DisplayName("should return a 400 if the name is missing")
         void addMission_missingName_returnsBadRequest() throws Exception{
             MissionRequest request = new MissionRequest("", Rank.B, "Shikamaru", false);
-            mockMvc.perform(post("/missions")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(asJsonString(request)))
+            performPostRequest("/missions", request)
                     .andExpect(status().isBadRequest());
         }
 
@@ -120,9 +121,7 @@ public class MissionControllerIntegrationTest {
         @DisplayName("should return a 400 if the rank is missing")
         void addMission_missingRank_returnsBadRequest() throws Exception {
             MissionRequest request = new MissionRequest("Recoger flores", null, "Ino", false);
-            mockMvc.perform(post("/missions")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(asJsonString(request)))
+            performPostRequest("/missions", request)
                     .andExpect(status().isBadRequest());
         }
 
@@ -130,9 +129,7 @@ public class MissionControllerIntegrationTest {
         @DisplayName("should return a 400 if the assignedTo field is missing")
         void addMission_missingAssignedTo_returnsBadRequest() throws Exception {
             MissionRequest request = new MissionRequest("Entrenar en el bosque", Rank.C, null, false);
-            mockMvc.perform(post("/missions")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(asJsonString(request)))
+            performPostRequest("/missions", request)
                     .andExpect(status().isBadRequest());
         }
     }
