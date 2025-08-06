@@ -1,4 +1,4 @@
-package com.konoha.NinjaMissionManager.dtos;
+package com.konoha.NinjaMissionManager.dtos.village;
 
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Village;

@@ -1,4 +1,4 @@
-package com.konoha.NinjaMissionManager.dtos;
+package com.konoha.NinjaMissionManager.dtos.village;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

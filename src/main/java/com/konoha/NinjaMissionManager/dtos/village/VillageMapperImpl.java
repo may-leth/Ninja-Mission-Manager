@@ -1,11 +1,11 @@
-package com.konoha.NinjaMissionManager.dtos;
+package com.konoha.NinjaMissionManager.dtos.village;
 
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Village;
 import org.springframework.stereotype.Component;
 
 @Component
-public class VillageMapperImpl implements VillageMapper{
+public class VillageMapperImpl implements VillageMapper {
 
     @Override
     public Village dtoToEntity(VillageRequest dto, Ninja kageNinja) {
