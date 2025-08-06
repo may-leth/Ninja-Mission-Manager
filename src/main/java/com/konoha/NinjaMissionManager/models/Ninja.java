@@ -26,8 +26,9 @@ public class Ninja {
     @Column(name = "ninja_rank")
     private Rank rank;
 
-    @Column(nullable = false)
-    private String village; //recuerda cambiar por entidad
+    @ManyToOne
+    @JoinColumn(name = "village_id", nullable = false)
+    private Village village;
 
     @Column(nullable = false)
     private Integer missionsCompletedCount;
