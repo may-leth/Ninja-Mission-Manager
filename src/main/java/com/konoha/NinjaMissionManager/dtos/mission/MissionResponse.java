@@ -10,6 +10,7 @@ import java.util.Set;
 public record MissionResponse(
         Long id,
         String title,
+        String description,
         Integer reward,
         MissionDifficulty difficulty,
         Status status,
