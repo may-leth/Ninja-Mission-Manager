@@ -3,6 +3,7 @@ package com.konoha.NinjaMissionManager.models;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -42,4 +43,12 @@ public class Ninja {
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "ninja_roles", joinColumns = @JoinColumn(name = "ninja_id"))
     private Set<Role> roles;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "ninja_missions",
+            joinColumns = @JoinColumn(name = "ninja_id"),
+            inverseJoinColumns = @JoinColumn(name = "mission_id")
+    )
+    private Set<Mission> assignedMissions = new HashSet<>();
 }

@@ -59,4 +59,12 @@ public class NinjaMapperImpl implements NinjaMapper{
                 ninja.isAnbu()
         );
     }
+
+    @Override
+    public NinjaSummaryResponse entityToSummaryDto(Ninja ninja) {
+        return new NinjaSummaryResponse(
+                ninja.getId(),
+                ninja.getName()
+        );
+    }
 }

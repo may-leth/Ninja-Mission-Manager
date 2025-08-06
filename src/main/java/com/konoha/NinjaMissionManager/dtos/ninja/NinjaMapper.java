@@ -11,4 +11,5 @@ public interface NinjaMapper {
     Ninja dtoToEntity(NinjaRegisterRequest dto, Village village, Rank rank, Integer missionsCompletedCount, Boolean isAnbu, Set<Role> roles);
     Ninja dtoToEntity(KageCreateNinjaRequest dto, Village village);
     NinjaResponse entityToDto(Ninja ninja);
+    NinjaSummaryResponse entityToSummaryDto(Ninja ninja);
 }

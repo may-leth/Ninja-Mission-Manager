@@ -1,6 +1,9 @@
 package com.konoha.NinjaMissionManager.dtos.ninja;
 
+import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
+
+import java.util.Set;
 
 public record NinjaResponse(
         Long id,
@@ -9,6 +12,7 @@ public record NinjaResponse(
         String rank,
         VillageResponse village,
         Integer missionCompletedCount,
-        Boolean isAnbu
+        Boolean isAnbu,
+        Set<MissionSummaryResponse> assignedMissions
 ) {
 }
