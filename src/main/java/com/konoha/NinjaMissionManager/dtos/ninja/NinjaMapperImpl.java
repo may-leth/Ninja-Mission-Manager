@@ -1,5 +1,7 @@
 package com.konoha.NinjaMissionManager.dtos.ninja;
 
+import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
 import com.konoha.NinjaMissionManager.dtos.village.VillageMapper;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
 import com.konoha.NinjaMissionManager.models.Ninja;
@@ -9,13 +11,16 @@ import com.konoha.NinjaMissionManager.models.Village;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class NinjaMapperImpl implements NinjaMapper{
     private final VillageMapper villageMapper;
+    private final MissionMapper missionMapper;
 
-    public NinjaMapperImpl(VillageMapper villageMapper){
+    public NinjaMapperImpl(VillageMapper villageMapper, MissionMapper missionMapper){
         this.villageMapper = villageMapper;
+        this.missionMapper = missionMapper;
     }
 
     @Override
@@ -49,6 +54,9 @@ public class NinjaMapperImpl implements NinjaMapper{
     @Override
     public NinjaResponse entityToDto(Ninja ninja) {
         VillageResponse village = villageMapper.entityToDto(ninja.getVillage());
+        Set<MissionSummaryResponse> assignedMission = ninja.getAssignedMissions().stream()
+                .map(missionMapper::entityToSummaryDto)
+                .collect(Collectors.toSet());
         return new NinjaResponse(
                 ninja.getId(),
                 ninja.getName(),
@@ -56,7 +64,8 @@ public class NinjaMapperImpl implements NinjaMapper{
                 ninja.getRank().name(),
                 village,
                 ninja.getMissionsCompletedCount(),
-                ninja.isAnbu()
+                ninja.isAnbu(),
+                assignedMission
         );
     }
 
