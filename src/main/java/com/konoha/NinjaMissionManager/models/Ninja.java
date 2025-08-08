@@ -8,7 +8,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "ninjas")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Ninja {
@@ -33,8 +33,9 @@ public class Ninja {
     @JoinColumn(name = "village_id", nullable = false)
     private Village village;
 
+    @Builder.Default
     @Column(nullable = false)
-    private Integer missionsCompletedCount;
+    private Integer missionsCompletedCount = 0;
 
     @Column(nullable = false)
     private boolean isAnbu;
@@ -50,5 +51,7 @@ public class Ninja {
             joinColumns = @JoinColumn(name = "ninja_id"),
             inverseJoinColumns = @JoinColumn(name = "mission_id")
     )
+
+    @Builder.Default
     private Set<Mission> assignedMissions = new HashSet<>();
 }

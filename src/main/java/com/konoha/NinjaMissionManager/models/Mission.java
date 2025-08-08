@@ -8,7 +8,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "missions")
-@Getter @Setter
+@Data
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Mission {
@@ -29,13 +29,15 @@ public class Mission {
     @Column(name = "mission_difficulty")
     MissionDifficulty difficulty;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    Status status;
+    Status status = Status.PENDING;
 
     @Column(nullable = false)
     LocalDateTime creationDate;
 
+    @Builder.Default
     @ManyToMany(mappedBy = "assignedMissions")
     private Set<Ninja> assignedNinjas = new HashSet<>();
 }

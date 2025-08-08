@@ -20,13 +20,13 @@ public class NinjaSpecificationBuilder {
         return this;
     }
 
-    public NinjaSpecificationBuilder village(Optional<Long> villageId){
+    public NinjaSpecificationBuilder villageId(Optional<Long> villageId){
         villageId.ifPresent(id -> specification = specification.and(NinjaSpecifications.inVillageId(id)));
         return this;
     }
 
     public NinjaSpecificationBuilder isAnbu(Optional<Boolean> isAnbu){
-        isAnbu.ifPresent(anbu -> specification = specification.and(NinjaSpecifications.isAnbu()));
+        isAnbu.ifPresent(anbu -> specification = specification.and(NinjaSpecifications.isAnbu(anbu)));
         return this;
     }
 
