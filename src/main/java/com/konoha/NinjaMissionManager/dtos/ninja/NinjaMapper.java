@@ -31,6 +31,10 @@ public interface NinjaMapper {
     })
     Ninja dtoToEntity(KageCreateNinjaRequest dto, Village village);
 
+    @Mappings({
+        @Mapping(source = "village.name", target = "village"),
+        @Mapping(source = "anbu", target = "isAnbu")
+    })
     NinjaResponse entityToDto(Ninja ninja, @Context MissionMapper missionMapper);
     NinjaSummaryResponse entityToSummaryDto(Ninja ninja);
 }

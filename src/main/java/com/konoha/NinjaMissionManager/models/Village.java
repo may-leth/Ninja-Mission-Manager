@@ -17,6 +17,6 @@ public class Village {
     private String name;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kage_id", nullable = false)
+    @JoinColumn(name = "kage_id", nullable = true)
     private Ninja kage;
 }
