@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class NinjaServices {
+public class NinjaService {
     private final NinjaRepository ninjaRepository;
     private final NinjaMapper ninjaMapper;
     private final MissionMapper missionMapper;

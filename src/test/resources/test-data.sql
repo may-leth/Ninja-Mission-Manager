@@ -1,3 +1,11 @@
+SET REFERENTIAL_INTEGRITY FALSE;
+
+DELETE FROM ninja_roles;
+DELETE FROM ninjas;
+DELETE FROM villages;
+
+SET REFERENTIAL_INTEGRITY TRUE;
+
 INSERT INTO villages (id, name, kage_id) VALUES (1, 'Konoha', NULL);
 INSERT INTO villages (id, name, kage_id) VALUES (2, 'Suna', NULL);
 INSERT INTO villages (id, name, kage_id) VALUES (3, 'Kiri', NULL);
