@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -162,7 +161,7 @@ public class NinjaServiceTest {
 
         @Test
         @DisplayName("Should throw ResourceNotFoundException when id does not exist")
-        void shouldThrowWhenIdNotFound() {
+        void shouldThrowExceptionWhenIdNotFound() {
             when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> ninjaService.getNinjaById(99L))
