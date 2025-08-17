@@ -89,7 +89,7 @@ public class VillageServiceTest {
     }
 
     @Nested
-    @DisplayName("getVillageById")
+    @DisplayName("getVillageResponseById")
     class GetVillageByIdTest {
         @Test
         @DisplayName("should find a village by its ID when it exists")
@@ -97,7 +97,7 @@ public class VillageServiceTest {
             when(villageRepository.findById(anyLong())).thenReturn(Optional.of(village));
             when(villageMapper.entityToDto(any(Village.class))).thenReturn(villageResponse);
 
-            VillageResponse result = villageService.getVillageById(1L);
+            VillageResponse result = villageService.getVillageResponseById(1L);
 
             assertNotNull(result);
             assertEquals(villageResponse.id(), result.id());
@@ -109,7 +109,7 @@ public class VillageServiceTest {
         void shouldThrowExceptionWhenVillageDoesNotExist() {
             when(villageRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () -> villageService.getVillageById(1L));
+            assertThrows(ResourceNotFoundException.class, () -> villageService.getVillageResponseById(1L));
         }
     }
 }
