@@ -11,7 +11,8 @@ public interface VillageMapper {
 
     @Mappings({
         @Mapping(target = "kage", source = "ninja"),
-        @Mapping(target = "id", ignore = true)
+        @Mapping(target = "id", ignore = true),
+        @Mapping(target = "name", source = "dto.name")
     })
     Village dtoToEntity(VillageRequest dto, Ninja ninja);
 
