@@ -10,11 +10,16 @@ import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
 import com.konoha.NinjaMissionManager.repositories.NinjaRepository;
+import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.specifications.NinjaSpecificationBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class NinjaService {
+public class NinjaService implements UserDetailsService {
     private final NinjaRepository ninjaRepository;
     private final NinjaMapper ninjaMapper;
     private final MissionMapper missionMapper;
@@ -49,6 +54,7 @@ public class NinjaService {
         return ninjaMapper.entityToDto(ninja, missionMapper);
     }
 
+    @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
@@ -64,6 +70,7 @@ public class NinjaService {
         return saveAndMapNinja(ninjaToSave);
     }
 
+    @Transactional
     public NinjaResponse createNinja(KageCreateNinjaRequest request){
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
@@ -82,5 +89,12 @@ public class NinjaService {
     private NinjaResponse saveAndMapNinja(Ninja ninja) {
         Ninja savedNinja = ninjaRepository.save(ninja);
         return ninjaMapper.entityToDto(savedNinja, null);
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return ninjaRepository.findByEmail(email)
+                .map(ninja -> new NinjaUserDetail(ninja))
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + email));
     }
 }
