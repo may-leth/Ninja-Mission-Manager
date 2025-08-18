@@ -45,7 +45,7 @@ public class VillageController {
     public ResponseEntity<VillageResponse> getVillageById(
             @Parameter(description = "ID de la aldea a buscar")
             @PathVariable Long id){
-        VillageResponse village = villageService.getVillageById(id);
+        VillageResponse village = villageService.getVillageResponseById(id);
         return ResponseEntity.ok(village);
     }
 }

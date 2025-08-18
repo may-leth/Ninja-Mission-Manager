@@ -32,9 +32,14 @@ public class VillageService {
                 .collect(Collectors.toList());
     }
 
-    public VillageResponse getVillageById(Long id){
+    public VillageResponse getVillageResponseById(Long id){
         Village village = villageRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Village not found with ID: " + id));
         return villageMapper.entityToDto(village);
+    }
+
+    public Village getVillageEntityById(Long id){
+        return villageRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Village not found with ID: " + id));
     }
 }
