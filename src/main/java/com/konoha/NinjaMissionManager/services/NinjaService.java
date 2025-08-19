@@ -15,6 +15,7 @@ import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.specifications.NinjaSpecificationBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,9 +51,21 @@ public class NinjaService implements UserDetailsService {
                 .toList();
     }
 
-    public NinjaResponse getNinjaById(Long id) {
-        Ninja ninja = ninjaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + id));
+    public NinjaResponse getNinjaById(Long requestedId, Principal principal) {
+        String authenticatedEmail = principal.getName();
+
+        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
+
+        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        boolean isOwner = requestedId.equals(authenticatedNinja.getId());
+
+        if (!isOwner && !isKage) {
+            throw new AccessDeniedException("You are not authorized to view this ninja's data.");
+        }
+
+        Ninja ninja = ninjaRepository.findById(requestedId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + requestedId));
         return ninjaMapper.entityToDto(ninja, missionMapper);
     }
 

@@ -2,6 +2,7 @@ package com.konoha.NinjaMissionManager.controllers;
 
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
 import com.konoha.NinjaMissionManager.models.Rank;
+import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.services.NinjaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,8 +11,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +32,7 @@ public class NinjaController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @GetMapping
+    @PreAuthorize("hasRole('KAGE')")
     public ResponseEntity<List<NinjaResponse>> getAllNinjas(
             @Parameter(description = "Filtro opcional por rango del ninja")
             @RequestParam(required = false) Optional<Rank> rank,
@@ -43,15 +48,18 @@ public class NinjaController {
     @Operation(summary = "Obtener un ninja por su ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Ninja recuperado exitosamente"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado, el ID no coincide con el usuario autenticado"),
             @ApiResponse(responseCode = "404", description = "Ninja no encontrado"),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('KAGE') || (#id == authentication.principal.id)")
     public ResponseEntity<NinjaResponse> getNinjaById(
             @Parameter(description = "ID del ninja a buscar")
-            @PathVariable Long id
+            @PathVariable Long id,
+            Principal principal
     ){
-        NinjaResponse ninja = ninjaService.getNinjaById(id);
+        NinjaResponse ninja = ninjaService.getNinjaById(id, principal);
         return ResponseEntity.ok(ninja);
     }
 }
