@@ -5,6 +5,7 @@ import com.konoha.NinjaMissionManager.dtos.ninja.KageCreateNinjaRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaMapper;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaRegisterRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
@@ -45,7 +46,7 @@ public class NinjaService implements UserDetailsService {
         return ninjaRepository.findAll(specification)
                 .stream()
                 .map(ninja -> ninjaMapper.entityToDto(ninja, missionMapper))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public NinjaResponse getNinjaById(Long id) {
@@ -56,6 +57,8 @@ public class NinjaService implements UserDetailsService {
 
     @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
+        validateEmailNotTaken(request.email());
+
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
                 .email(request.email())
@@ -72,6 +75,8 @@ public class NinjaService implements UserDetailsService {
 
     @Transactional
     public NinjaResponse createNinja(KageCreateNinjaRequest request){
+        validateEmailNotTaken(request.email());
+
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
                 .email(request.email())
@@ -86,9 +91,15 @@ public class NinjaService implements UserDetailsService {
         return saveAndMapNinja(ninjaToSave);
     }
 
+    private void validateEmailNotTaken(String email) {
+        if (ninjaRepository.existsByEmail(email)) {
+            throw new ResourceConflictException("Email is already registered: " + email);
+        }
+    }
+
     private NinjaResponse saveAndMapNinja(Ninja ninja) {
         Ninja savedNinja = ninjaRepository.save(ninja);
-        return ninjaMapper.entityToDto(savedNinja, null);
+        return ninjaMapper.entityToDto(savedNinja, missionMapper);
     }
 
     @Override
