@@ -6,10 +6,7 @@ import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
 import com.konoha.NinjaMissionManager.models.Village;
-import org.mapstruct.Context;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
+import org.mapstruct.*;
 
 import java.util.Set;
 
@@ -36,5 +33,6 @@ public interface NinjaMapper {
         @Mapping(source = "anbu", target = "isAnbu")
     })
     NinjaResponse entityToDto(Ninja ninja, @Context MissionMapper missionMapper);
+
     NinjaSummaryResponse entityToSummaryDto(Ninja ninja);
 }

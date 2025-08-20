@@ -1,10 +1,7 @@
 package com.konoha.NinjaMissionManager.services;
 
 import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
-import com.konoha.NinjaMissionManager.dtos.ninja.KageCreateNinjaRequest;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaMapper;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaRegisterRequest;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.dtos.ninja.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.Ninja;
@@ -27,7 +24,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,14 +35,8 @@ public class NinjaService implements UserDetailsService {
     private final VillageService villageService;
 
     public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu, Principal principal){
-        String authenticatedEmail = principal.getName();
-        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
-
-        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
-        if (!isKage) {
-            throw new AccessDeniedException("You are not authorized to view the list of ninjas.");
-        }
+        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
+        validateKageAccess(authenticatedNinja);
 
         Specification<Ninja> specification = NinjaSpecificationBuilder.builder()
                 .rank(rank)
@@ -61,20 +51,10 @@ public class NinjaService implements UserDetailsService {
     }
 
     public NinjaResponse getNinjaById(Long requestedId, Principal principal) {
-        String authenticatedEmail = principal.getName();
+        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
+        validateOwnerOrKageAccess(requestedId, authenticatedNinja);
 
-        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
-
-        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
-        boolean isOwner = requestedId.equals(authenticatedNinja.getId());
-
-        if (!isOwner && !isKage) {
-            throw new AccessDeniedException("You are not authorized to view this ninja's data.");
-        }
-
-        Ninja ninja = ninjaRepository.findById(requestedId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + requestedId));
+        Ninja ninja = findNinjaById(requestedId);
         return ninjaMapper.entityToDto(ninja, missionMapper);
     }
 
@@ -93,7 +73,7 @@ public class NinjaService implements UserDetailsService {
                 .missionsCompletedCount(0)
                 .build();
 
-        return saveAndMapNinja(ninjaToSave);
+        return persistAndMapNinja(ninjaToSave);
     }
 
     @Transactional
@@ -111,7 +91,81 @@ public class NinjaService implements UserDetailsService {
                 .missionsCompletedCount(0)
                 .build();
 
-        return saveAndMapNinja(ninjaToSave);
+        return persistAndMapNinja(ninjaToSave);
+    }
+
+    @Transactional
+    public NinjaResponse updateNinja(Long requestedId, NinjaSelfUpdateRequest request, Principal principal) {
+        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
+        validateOwnerAccess(requestedId, authenticatedNinja);
+
+        Ninja ninjaToUpdate = findNinjaById(requestedId);
+        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
+
+        ninjaToUpdate.setName(request.name());
+        ninjaToUpdate.setEmail(request.email());
+        ninjaToUpdate.setPassword(passwordEncoder.encode(request.password()));
+
+        return persistAndMapNinja(ninjaToUpdate);
+    }
+
+    @Transactional
+    public NinjaResponse updateAsKage(Long requestedId, NinjaKageUpdateRequest request, Principal principal) {
+        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
+        validateKageAccess(authenticatedNinja);
+
+        Ninja ninjaToUpdate = findNinjaById(requestedId);
+        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
+
+        ninjaToUpdate.setName(request.name());
+        ninjaToUpdate.setEmail(request.email());
+        ninjaToUpdate.setRank(request.rank());
+        ninjaToUpdate.setAnbu(request.isAnbu());
+        if (request.villageId() != null) {
+            ninjaToUpdate.setVillage(villageService.getVillageEntityById(request.villageId()));
+        }
+        ninjaToUpdate.setRoles(request.roles());
+
+        return persistAndMapNinja(ninjaToUpdate);
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return ninjaRepository.findByEmail(email)
+                .map(ninja -> new NinjaUserDetail(ninja))
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + email));
+    }
+
+    private Ninja getAuthenticatedNinja(Principal principal) {
+        String authenticatedEmail = principal.getName();
+        return ninjaRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
+    }
+
+    private Ninja findNinjaById(Long id) {
+        return ninjaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + id));
+    }
+
+    private void validateKageAccess(Ninja ninja) {
+        boolean isKage = ninja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        if (!isKage) {
+            throw new AccessDeniedException("You are not authorized to perform this operation.");
+        }
+    }
+
+    private void validateOwnerAccess(Long requestedId, Ninja authenticatedNinja) {
+        if (!requestedId.equals(authenticatedNinja.getId())) {
+            throw new AccessDeniedException("You are not authorized to update this ninja's data.");
+        }
+    }
+
+    private void validateOwnerOrKageAccess(Long requestedId, Ninja authenticatedNinja) {
+        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        boolean isOwner = requestedId.equals(authenticatedNinja.getId());
+        if (!isOwner && !isKage) {
+            throw new AccessDeniedException("You are not authorized to view this ninja's data.");
+        }
     }
 
     private void validateEmailNotTaken(String email) {
@@ -120,15 +174,14 @@ public class NinjaService implements UserDetailsService {
         }
     }
 
-    private NinjaResponse saveAndMapNinja(Ninja ninja) {
-        Ninja savedNinja = ninjaRepository.save(ninja);
-        return ninjaMapper.entityToDto(savedNinja, missionMapper);
+    private void validateEmailChange(String newEmail, String currentEmail) {
+        if (!newEmail.equals(currentEmail) && ninjaRepository.existsByEmail(newEmail)) {
+            throw new ResourceConflictException("Email is already taken");
+        }
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return ninjaRepository.findByEmail(email)
-                .map(ninja -> new NinjaUserDetail(ninja))
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + email));
+    private NinjaResponse persistAndMapNinja(Ninja ninja) {
+        Ninja savedNinja = ninjaRepository.save(ninja);
+        return ninjaMapper.entityToDto(savedNinja, missionMapper);
     }
 }

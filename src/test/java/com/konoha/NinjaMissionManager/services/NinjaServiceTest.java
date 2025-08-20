@@ -1,10 +1,7 @@
 package com.konoha.NinjaMissionManager.services;
 
 import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
-import com.konoha.NinjaMissionManager.dtos.ninja.KageCreateNinjaRequest;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaMapper;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaRegisterRequest;
-import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.dtos.ninja.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.Ninja;
@@ -17,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +30,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -92,7 +91,7 @@ public class NinjaServiceTest {
 
                 assertThatThrownBy(() -> ninjaService.getAllNinjas(Optional.empty(), Optional.empty(), Optional.empty(), principal))
                         .isInstanceOf(AccessDeniedException.class)
-                        .hasMessageContaining("You are not authorized to view the list of ninjas.");
+                        .hasMessageContaining("You are not authorized to perform this operation.");
 
                 verify(ninjaRepository).findByEmail(naruto.getEmail());
                 verify(ninjaRepository, never()).findAll(any(Specification.class));
@@ -403,6 +402,200 @@ public class NinjaServiceTest {
             verify(ninjaRepository).existsByEmail("itachi@gmail.com");
             verifyNoInteractions(passwordEncoder, villageService, ninjaMapper);
             verify(ninjaRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateNinja")
+    class UpdateNinjaTests {
+        private NinjaSelfUpdateRequest updateRequest;
+
+        @BeforeEach
+        void setUp(){
+            updateRequest = new NinjaSelfUpdateRequest(
+                    "Naruto",
+                    "naruto@gmail.com",
+                    "NewNaruto12345."
+            );
+        }
+
+        @Test
+        @DisplayName("Should update ninja when authenticated user is the owner")
+        void shouldUpdateNinjaWhenIsOwner() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(false);
+            when(passwordEncoder.encode(updateRequest.password())).thenReturn("encodedNewNaruto12345.");
+            when(ninjaRepository.save(any(Ninja.class))).then(returnsFirstArg());
+            when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
+
+            NinjaResponse result = ninjaService.updateNinja(naruto.getId(), updateRequest, principal);
+
+            assertThat(result).isEqualTo(narutoResponse);
+
+            var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
+            verify(ninjaRepository).save(ninjaCaptor.capture());
+            Ninja savedNinja = ninjaCaptor.getValue();
+
+            assertThat(savedNinja.getName()).isEqualTo(updateRequest.name());
+            assertThat(savedNinja.getEmail()).isEqualTo(updateRequest.email());
+            assertThat(savedNinja.getPassword()).isEqualTo("encodedNewNaruto12345.");
+
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when user is not the owner")
+        void shouldThrowAccessDeniedWhenNotOwner(){
+            when(principal.getName()).thenReturn(sasuke.getEmail());
+            when(ninjaRepository.findByEmail(sasuke.getEmail())).thenReturn(Optional.of(sasuke));
+
+            assertThatThrownBy(() -> ninjaService.updateNinja(naruto.getId(), updateRequest, principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("You are not authorized to update this ninja's data.");
+
+            verify(ninjaRepository, never()).findById(anyLong());
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when ninja to update does not exist")
+        void shouldThrowNotFoundWhenNinjaDoesNotExist() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> ninjaService.updateNinja(naruto.getId(), updateRequest, principal))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Ninja not found with ID: " + naruto.getId());
+
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceConflictException when new email is already taken")
+        void shouldThrowConflictWhenEmailIsTaken() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(true);
+
+            assertThatThrownBy(() -> ninjaService.updateNinja(naruto.getId(), updateRequest, principal))
+                    .isInstanceOf(ResourceConflictException.class)
+                    .hasMessageContaining("Email is already taken");
+
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateAsKage")
+    class UpdateAsKageTests {
+        private NinjaKageUpdateRequest updateRequest;
+        private Village newVillage;
+
+        @BeforeEach
+        void setUp(){
+            updateRequest = new NinjaKageUpdateRequest(
+                    "Naruto Hokage",
+                    "naruto@gmail.com",
+                    Rank.CHUNIN,
+                    1L,
+                    true,
+                    Set.of(Role.ROLE_KAGE)
+            );
+            newVillage = new Village(1L, "New Konoha", null);
+        }
+
+        @Test
+        @DisplayName("Should update ninja when user is a Kage")
+        void shouldUpdateNinjaWhenUserIsKage() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(false);
+            when(villageService.getVillageEntityById(updateRequest.villageId())).thenReturn(newVillage);
+            when(ninjaRepository.save(any(Ninja.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
+
+            NinjaResponse result = ninjaService.updateAsKage(naruto.getId(), updateRequest, principal);
+
+            assertThat(result).isEqualTo(narutoResponse);
+
+            var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
+            verify(ninjaRepository).save(ninjaCaptor.capture());
+            Ninja savedNinja = ninjaCaptor.getValue();
+
+            assertThat(savedNinja.getName()).isEqualTo(updateRequest.name());
+            assertThat(savedNinja.getEmail()).isEqualTo(updateRequest.email());
+            assertThat(savedNinja.getRank()).isEqualTo(updateRequest.rank());
+            assertThat(savedNinja.isAnbu()).isEqualTo(updateRequest.isAnbu());
+            assertThat(savedNinja.getVillage()).isEqualTo(newVillage);
+            assertThat(savedNinja.getRoles()).isEqualTo(updateRequest.roles());
+        }
+
+        @Test
+        @DisplayName("Should update ninja without changing village when villageId is null")
+        void shouldUpdateWithoutVillageWhenIdIsNull() {
+            NinjaKageUpdateRequest requestWithoutVillage = new NinjaKageUpdateRequest(
+                    "Name",
+                    "email@email.com",
+                    Rank.JONIN,
+                    null,
+                    false,
+                    Set.of()
+            );
+
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.existsByEmail(requestWithoutVillage.email())).thenReturn(false);
+            when(ninjaRepository.save(any(Ninja.class))).thenReturn(naruto);
+            when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
+
+            ninjaService.updateAsKage(naruto.getId(), requestWithoutVillage, principal);
+
+            verify(villageService, never()).getVillageEntityById(any());
+        }
+
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when user is not a Kage")
+        void shouldThrowAccessDeniedWhenNotKage() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+
+            assertThatThrownBy(() -> ninjaService.updateAsKage(sasuke.getId(), updateRequest, principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("You are not authorized to perform this operation.");
+
+            verify(ninjaRepository, never()).findById(anyLong());
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when ninja to update does not exist")
+        void shouldThrowNotFoundWhenNinjaDoesNotExist() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> ninjaService.updateAsKage(99L, updateRequest, principal))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Ninja not found with ID: 99");
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceConflictException when new email is already taken")
+        void shouldThrowConflictWhenEmailIsTaken() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(true);
+
+            assertThatThrownBy(() -> ninjaService.updateAsKage(naruto.getId(), updateRequest, principal))
+                    .isInstanceOf(ResourceConflictException.class)
+                    .hasMessageContaining("Email is already taken");
         }
     }
 }
