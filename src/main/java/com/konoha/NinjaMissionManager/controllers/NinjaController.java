@@ -1,18 +1,19 @@
 package com.konoha.NinjaMissionManager.controllers;
 
+import com.konoha.NinjaMissionManager.dtos.ninja.NinjaKageUpdateRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.dtos.ninja.NinjaSelfUpdateRequest;
 import com.konoha.NinjaMissionManager.models.Rank;
-import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.services.NinjaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -62,5 +63,41 @@ public class NinjaController {
     ){
         NinjaResponse ninja = ninjaService.getNinjaById(id, principal);
         return ResponseEntity.ok(ninja);
+    }
+
+    @Operation(summary = "Actualizar perfil del propio ninja")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil de ninja actualizado con éxito"),
+            @ApiResponse(responseCode = "403", description = "Acceso no autorizado"),
+            @ApiResponse(responseCode = "404", description = "Ninja no encontrado"),
+            @ApiResponse(responseCode = "409", description = "Conflicto de recursos (email ya registrado)")
+    })
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('NINJA_USER')")
+    public ResponseEntity<NinjaResponse> updateNinja(
+            @Parameter(description = "ID del ninja a actualizar") @PathVariable Long id,
+            @RequestBody @Valid NinjaSelfUpdateRequest request,
+            Principal principal
+    ) {
+        NinjaResponse updatedNinja = ninjaService.updateNinja(id, request, principal);
+        return ResponseEntity.ok(updatedNinja);
+    }
+
+    @Operation(summary = "Actualizar el perfil de un ninja (solo Kage)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil de ninja actualizado con éxito"),
+            @ApiResponse(responseCode = "403", description = "Acceso no autorizado"),
+            @ApiResponse(responseCode = "404", description = "Ninja no encontrado"),
+            @ApiResponse(responseCode = "409", description = "Conflicto de recursos (email ya registrado)")
+    })
+    @PutMapping("/kage/{id}")
+    @PreAuthorize("hasRole('KAGE')")
+    public ResponseEntity<NinjaResponse> updateNinjaAsKage(
+            @Parameter(description = "ID del ninja a actualizar") @PathVariable Long id,
+            @RequestBody @Valid NinjaKageUpdateRequest request,
+            Principal principal
+    ) {
+        NinjaResponse updatedNinja = ninjaService.updateAsKage(id, request, principal);
+        return ResponseEntity.ok(updatedNinja);
     }
 }

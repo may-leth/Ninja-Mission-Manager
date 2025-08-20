@@ -92,7 +92,7 @@ public class NinjaServiceTest {
 
                 assertThatThrownBy(() -> ninjaService.getAllNinjas(Optional.empty(), Optional.empty(), Optional.empty(), principal))
                         .isInstanceOf(AccessDeniedException.class)
-                        .hasMessageContaining("You are not authorized to view the list of ninjas.");
+                        .hasMessageContaining("You are not authorized to perform this operation.");
 
                 verify(ninjaRepository).findByEmail(naruto.getEmail());
                 verify(ninjaRepository, never()).findAll(any(Specification.class));
