@@ -5,6 +5,7 @@ import com.konoha.NinjaMissionManager.dtos.ninja.KageCreateNinjaRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaMapper;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaRegisterRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
@@ -14,6 +15,7 @@ import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.specifications.NinjaSpecificationBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,7 +38,16 @@ public class NinjaService implements UserDetailsService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final VillageService villageService;
 
-    public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu){
+    public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu, Principal principal){
+        String authenticatedEmail = principal.getName();
+        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
+
+        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        if (!isKage) {
+            throw new AccessDeniedException("You are not authorized to view the list of ninjas.");
+        }
+
         Specification<Ninja> specification = NinjaSpecificationBuilder.builder()
                 .rank(rank)
                 .villageId(villageId)
@@ -45,17 +57,31 @@ public class NinjaService implements UserDetailsService {
         return ninjaRepository.findAll(specification)
                 .stream()
                 .map(ninja -> ninjaMapper.entityToDto(ninja, missionMapper))
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public NinjaResponse getNinjaById(Long id) {
-        Ninja ninja = ninjaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + id));
+    public NinjaResponse getNinjaById(Long requestedId, Principal principal) {
+        String authenticatedEmail = principal.getName();
+
+        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
+
+        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        boolean isOwner = requestedId.equals(authenticatedNinja.getId());
+
+        if (!isOwner && !isKage) {
+            throw new AccessDeniedException("You are not authorized to view this ninja's data.");
+        }
+
+        Ninja ninja = ninjaRepository.findById(requestedId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + requestedId));
         return ninjaMapper.entityToDto(ninja, missionMapper);
     }
 
     @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
+        validateEmailNotTaken(request.email());
+
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
                 .email(request.email())
@@ -72,6 +98,8 @@ public class NinjaService implements UserDetailsService {
 
     @Transactional
     public NinjaResponse createNinja(KageCreateNinjaRequest request){
+        validateEmailNotTaken(request.email());
+
         Ninja ninjaToSave = Ninja.builder()
                 .name(request.name())
                 .email(request.email())
@@ -86,9 +114,15 @@ public class NinjaService implements UserDetailsService {
         return saveAndMapNinja(ninjaToSave);
     }
 
+    private void validateEmailNotTaken(String email) {
+        if (ninjaRepository.existsByEmail(email)) {
+            throw new ResourceConflictException("Email is already registered: " + email);
+        }
+    }
+
     private NinjaResponse saveAndMapNinja(Ninja ninja) {
         Ninja savedNinja = ninjaRepository.save(ninja);
-        return ninjaMapper.entityToDto(savedNinja, null);
+        return ninjaMapper.entityToDto(savedNinja, missionMapper);
     }
 
     @Override

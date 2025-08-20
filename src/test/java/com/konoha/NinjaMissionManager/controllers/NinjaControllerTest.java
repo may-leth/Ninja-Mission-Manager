@@ -21,7 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Sql(scripts = "/test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@WithMockUser
 @DisplayName("NinjaController Integration Tests")
 class NinjaControllerTest {
 
@@ -33,8 +32,18 @@ class NinjaControllerTest {
     class GetAllNinjas {
 
         @Test
-        @DisplayName("Should return all ninjas without filters")
-        void shouldReturnAllNinjas() throws Exception {
+        @DisplayName("Should return 403 Forbidden for a regular user")
+        @WithMockUser(roles = "NINJA_USER")
+        void shouldReturn403ForRegularUser() throws Exception {
+            mockMvc.perform(get("/ninjas")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return all ninjas without filters when user is Kage")
+        @WithMockUser(roles = "KAGE", username = "tsunade@gmail.com")
+        void shouldReturnAllNinjasAsKage() throws Exception {
             mockMvc.perform(get("/ninjas")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
@@ -44,8 +53,9 @@ class NinjaControllerTest {
         }
 
         @Test
-        @DisplayName("Should return ninjas filtered by rank")
-        void shouldReturnNinjasFilteredByRank() throws Exception {
+        @DisplayName("Should return ninjas filtered by rank when user is Kage")
+        @WithMockUser(roles = "KAGE", username = "tsunade@gmail.com")
+        void shouldReturnNinjasFilteredByRankAsKage() throws Exception {
             mockMvc.perform(get("/ninjas")
                             .param("rank", Rank.GENIN.name())
                             .contentType(MediaType.APPLICATION_JSON))
@@ -59,8 +69,20 @@ class NinjaControllerTest {
     class GetNinjaById {
 
         @Test
-        @DisplayName("Should return ninja by ID when it exists")
-        void shouldReturnNinjaById() throws Exception {
+        @DisplayName("Should return ninja for authenticated user")
+        @WithMockUser(username = "kakashi@gmail.com")
+        void shouldReturnNinjaForOwner() throws Exception {
+            mockMvc.perform(get("/ninjas/{id}", 3)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.name", notNullValue()))
+                    .andExpect(jsonPath("$.rank", notNullValue()));
+        }
+
+        @Test
+        @DisplayName("Should return ninja when user is a Kage")
+        @WithMockUser(roles = "KAGE", username = "tsunade@gmail.com")
+        void shouldReturnNinjaForKage() throws Exception {
             mockMvc.perform(get("/ninjas/{id}", 1)
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
@@ -69,7 +91,17 @@ class NinjaControllerTest {
         }
 
         @Test
-        @DisplayName("Should return 404 Not Found when ninja does not exist")
+        @DisplayName("Should return 403 Forbidden when a user tries to view another ninja's data")
+        @WithMockUser(username = "naruto@gmail.com")
+        void shouldReturn403ForOtherNinja() throws Exception {
+            mockMvc.perform(get("/ninjas/{id}", 2)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when ninja does not exist (for Kage)")
+        @WithMockUser(roles = "KAGE", username = "tsunade@konoha.com")
         void shouldReturnNotFoundWhenNinjaDoesNotExist() throws Exception {
             mockMvc.perform(get("/ninjas/{id}", 999)
                             .contentType(MediaType.APPLICATION_JSON))
