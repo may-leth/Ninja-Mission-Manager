@@ -21,8 +21,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -51,105 +53,144 @@ public class NinjaServiceTest {
     @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Mock
+    private Principal principal;
+
     @InjectMocks
     private NinjaService ninjaService;
 
-    private Ninja ninja;
-    private NinjaResponse ninjaResponse;
+    private Ninja naruto;
+    private Ninja sasuke;
+    private Ninja kage;
+    private NinjaResponse narutoResponse;
+    private NinjaResponse sasukeResponse;
+    private NinjaResponse kageResponse;
 
     @BeforeEach
     void setUp() {
-        ninja = new Ninja();
-        ninja.setId(1L);
-        ninja.setName("Kakashi Hatake");
+        naruto = new Ninja(1L, "Naruto Uzumaki", "naruto@konoha.com", "pass", Rank.GENIN, new Village(), 0, false, Set.of(Role.ROLE_NINJA_USER), Collections.emptySet());
+        sasuke = new Ninja(2L, "Sasuke Uchiha", "sasuke@konoha.com", "pass", Rank.GENIN, new Village(), 0, false, Set.of(Role.ROLE_NINJA_USER), Collections.emptySet());
+        kage = new Ninja(3L, "Tsunade Senju", "tsunade@konoha.com", "pass", Rank.KAGE, new Village(), 0, false, Set.of(Role.ROLE_KAGE), Collections.emptySet());
 
-        ninjaResponse = new NinjaResponse(
-                1L,
-                "Kakashi Hatake",
-                "kakashi@leaf.com",
-                "JONIN",
-                "konoha",
-                50,
-                false,
-                Set.of()
-        );
+        narutoResponse = new NinjaResponse(1L, "Naruto Uzumaki", "naruto@konoha.com", "GENIN", "Konoha", 0, false, Collections.emptySet());
+        sasukeResponse = new NinjaResponse(2L, "Sasuke Uchiha", "sasuke@konoha.com", "GENIN", "Konoha", 0, false, Collections.emptySet());
+        kageResponse = new NinjaResponse(3L, "Tsunade Senju", "tsunade@konoha.com", "KAGE", "Konoha", 0, false, Collections.emptySet());
     }
 
     @Nested
     @DisplayName("getAllNinjas")
-    class GetAll {
+    class GetAllNinjasTests {
 
-        @Test
-        @DisplayName("Should return all ninjas without filters")
-        void shouldReturnAllWithoutFilters() {
-            when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(ninja));
-            when(ninjaMapper.entityToDto(ninja, missionMapper)).thenReturn(ninjaResponse);
+        @Nested
+        @DisplayName("Security Logic")
+        class SecurityLogic {
+            @Test
+            @DisplayName("Should throw AccessDeniedException when user is not a Kage")
+            void shouldThrowAccessDeniedWhenNotKage() {
+                when(principal.getName()).thenReturn(naruto.getEmail());
+                when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
 
-            List<NinjaResponse> result = ninjaService.getAllNinjas(Optional.empty(), Optional.empty(), Optional.empty());
+                assertThatThrownBy(() -> ninjaService.getAllNinjas(Optional.empty(), Optional.empty(), Optional.empty(), principal))
+                        .isInstanceOf(AccessDeniedException.class)
+                        .hasMessageContaining("You are not authorized to view the list of ninjas.");
 
-            assertThat(result).hasSize(1).containsExactly(ninjaResponse);
-            verify(ninjaRepository).findAll(any(Specification.class));
-            verify(ninjaMapper).entityToDto(ninja, missionMapper);
+                verify(ninjaRepository).findByEmail(naruto.getEmail());
+                verify(ninjaRepository, never()).findAll(any(Specification.class));
+                verifyNoInteractions(ninjaMapper);
+            }
         }
 
-        @Test
-        @DisplayName("Should return ninjas filtered by rank")
-        void shouldReturnFilteredByRank() {
-            when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(ninja));
-            when(ninjaMapper.entityToDto(ninja, missionMapper)).thenReturn(ninjaResponse);
+        @Nested
+        @DisplayName("Filtering Logic")
+        class FilteringLogic {
+            @BeforeEach
+            void mockKagePrincipal() {
+                when(principal.getName()).thenReturn(kage.getEmail());
+                when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            }
 
-            List<NinjaResponse> result = ninjaService.getAllNinjas(
-                    Optional.of(Rank.GENIN),
-                    Optional.empty(),
-                    Optional.empty());
+            @Test
+            @DisplayName("Should return all ninjas without filters when user is a Kage")
+            void shouldReturnAllWithoutFilters() {
+                when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(naruto, sasuke));
+                when(ninjaMapper.entityToDto(eq(naruto), any())).thenReturn(narutoResponse);
+                when(ninjaMapper.entityToDto(eq(sasuke), any())).thenReturn(sasukeResponse);
 
-            assertThat(result).hasSize(1).containsExactly(ninjaResponse);
-            verify(ninjaRepository).findAll(any(Specification.class));
-        }
+                List<NinjaResponse> result = ninjaService.getAllNinjas(Optional.empty(), Optional.empty(), Optional.empty(), principal);
 
-        @Test
-        @DisplayName("Should return ninjas filtered by village")
-        void shouldReturnFilteredByVillage() {
-            when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(ninja));
-            when(ninjaMapper.entityToDto(ninja, missionMapper)).thenReturn(ninjaResponse);
+                assertThat(result).hasSize(2).containsExactly(narutoResponse, sasukeResponse);
+                verify(ninjaRepository).findByEmail(kage.getEmail());
+                verify(ninjaRepository).findAll(any(Specification.class));
+                verify(ninjaMapper, times(2)).entityToDto(any(Ninja.class), any());
+            }
 
-            List<NinjaResponse> result = ninjaService.getAllNinjas(
-                    Optional.empty(),
-                    Optional.of(1L),
-                    Optional.empty());
+            @Test
+            @DisplayName("Should return ninjas filtered by rank")
+            void shouldReturnFilteredByRank() {
+                when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(naruto));
+                when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
 
-            assertThat(result).hasSize(1).containsExactly(ninjaResponse);
-            verify(ninjaRepository).findAll(any(Specification.class));
-        }
+                List<NinjaResponse> result = ninjaService.getAllNinjas(
+                        Optional.of(Rank.GENIN),
+                        Optional.empty(),
+                        Optional.empty(),
+                        principal);
 
-        @Test
-        @DisplayName("Should return ninjas filtered by if is Anbu")
-        void shouldReturnFilteredByIsAnbu() {
-            when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(ninja));
-            when(ninjaMapper.entityToDto(ninja, missionMapper)).thenReturn(ninjaResponse);
+                assertThat(result).hasSize(1).containsExactly(narutoResponse);
+                verify(ninjaRepository).findByEmail(kage.getEmail());
+                verify(ninjaRepository).findAll(any(Specification.class));
+            }
 
-            List<NinjaResponse> result = ninjaService.getAllNinjas(
-                    Optional.empty(),
-                    Optional.empty(),
-                    Optional.of(true));
+            @Test
+            @DisplayName("Should return ninjas filtered by village")
+            void shouldReturnFilteredByVillage() {
+                when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(naruto));
+                when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
 
-            assertThat(result).hasSize(1).containsExactly(ninjaResponse);
-            verify(ninjaRepository).findAll(any(Specification.class));
-        }
+                List<NinjaResponse> result = ninjaService.getAllNinjas(
+                        Optional.empty(),
+                        Optional.of(1L),
+                        Optional.empty(),
+                        principal);
 
-        @Test
-        @DisplayName("Should return empty list when no results match filters")
-        void shouldReturnEmptyWhenNoMatch() {
-            when(ninjaRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+                assertThat(result).hasSize(1).containsExactly(narutoResponse);
+                verify(ninjaRepository).findByEmail(kage.getEmail());
+                verify(ninjaRepository).findAll(any(Specification.class));
+            }
 
-            List<NinjaResponse> result = ninjaService.getAllNinjas(
-                    Optional.of(Rank.GENIN),
-                    Optional.of(99L),
-                    Optional.of(false));
+            @Test
+            @DisplayName("Should return ninjas filtered by if is Anbu")
+            void shouldReturnFilteredByIsAnbu() {
+                when(ninjaRepository.findAll(any(Specification.class))).thenReturn(List.of(naruto));
+                when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
 
-            assertThat(result).isEmpty();
-            verify(ninjaRepository).findAll(any(Specification.class));
-            verifyNoInteractions(ninjaMapper);
+                List<NinjaResponse> result = ninjaService.getAllNinjas(
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.of(true),
+                        principal);
+
+                assertThat(result).hasSize(1).containsExactly(narutoResponse);
+                verify(ninjaRepository).findByEmail(kage.getEmail());
+                verify(ninjaRepository).findAll(any(Specification.class));
+            }
+
+            @Test
+            @DisplayName("Should return empty list when no results match filters")
+            void shouldReturnEmptyWhenNoMatch() {
+                when(ninjaRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+
+                List<NinjaResponse> result = ninjaService.getAllNinjas(
+                        Optional.of(Rank.GENIN),
+                        Optional.of(99L),
+                        Optional.of(false),
+                        principal);
+
+                assertThat(result).isEmpty();
+                verify(ninjaRepository).findByEmail(kage.getEmail());
+                verify(ninjaRepository).findAll(any(Specification.class));
+                verifyNoInteractions(ninjaMapper);
+            }
         }
     }
 
@@ -157,29 +198,65 @@ public class NinjaServiceTest {
     @Nested
     @DisplayName("getNinjaById")
     class GetNinjaByIdTests {
+        @Test
+        @DisplayName("Should return ninja when authenticated user is the owner")
+        void shouldReturnNinjaForOwner() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaMapper.entityToDto(eq(naruto), any())).thenReturn(narutoResponse);
+
+            NinjaResponse result = ninjaService.getNinjaById(naruto.getId(), principal);
+
+            assertThat(result).isEqualTo(narutoResponse);
+            verify(ninjaRepository).findByEmail(naruto.getEmail());
+            verify(ninjaRepository).findById(naruto.getId());
+            verify(ninjaMapper).entityToDto(eq(naruto), any());
+        }
 
         @Test
-        @DisplayName("Should return ninja when id exists")
-        void shouldReturnNinjaWhenIdExists() {
-            when(ninjaRepository.findById(1L)).thenReturn(Optional.of(ninja));
-            when(ninjaMapper.entityToDto(ninja, missionMapper)).thenReturn(ninjaResponse);
+        @DisplayName("Should return ninja when authenticated user is Kage")
+        void shouldReturnNinjaForKage() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+            when(ninjaMapper.entityToDto(eq(naruto), any())).thenReturn(narutoResponse);
 
-            NinjaResponse result = ninjaService.getNinjaById(1L);
+            NinjaResponse result = ninjaService.getNinjaById(naruto.getId(), principal);
 
-            assertThat(result).isEqualTo(ninjaResponse);
-            verify(ninjaRepository).findById(1L);
-            verify(ninjaMapper).entityToDto(ninja, missionMapper);
+            assertThat(result).isEqualTo(narutoResponse);
+            verify(ninjaRepository).findByEmail(kage.getEmail());
+            verify(ninjaRepository).findById(naruto.getId());
+            verify(ninjaMapper).entityToDto(eq(naruto), any());
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when ninja tries to view another ninja's profile")
+        void shouldThrowAccessDeniedForOtherNinja() {
+            when(principal.getName()).thenReturn(sasuke.getEmail());
+            when(ninjaRepository.findByEmail(sasuke.getEmail())).thenReturn(Optional.of(sasuke));
+
+            assertThatThrownBy(() -> ninjaService.getNinjaById(naruto.getId(), principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("You are not authorized to view this ninja's data.");
+
+            verify(ninjaRepository).findByEmail(sasuke.getEmail());
+            verify(ninjaRepository, never()).findById(anyLong());
+            verifyNoInteractions(ninjaMapper);
         }
 
         @Test
         @DisplayName("Should throw ResourceNotFoundException when id does not exist")
         void shouldThrowExceptionWhenIdNotFound() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
             when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> ninjaService.getNinjaById(99L))
+            assertThatThrownBy(() -> ninjaService.getNinjaById(99L, principal))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Ninja not found with ID: 99");
 
+            verify(ninjaRepository).findByEmail(kage.getEmail());
             verify(ninjaRepository).findById(99L);
             verifyNoInteractions(ninjaMapper);
         }
@@ -219,11 +296,11 @@ public class NinjaServiceTest {
                     .build();
 
             when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
-            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(ninjaResponse);
+            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(narutoResponse);
 
             NinjaResponse result = ninjaService.registerNewNinja(request);
 
-            assertThat(result).isEqualTo(ninjaResponse);
+            assertThat(result).isEqualTo(narutoResponse);
 
             verify(ninjaRepository).existsByEmail("naruto@gmail.com");
             verify(passwordEncoder).encode("Naruto12345.");
@@ -291,11 +368,11 @@ public class NinjaServiceTest {
                     .build();
 
             when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
-            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(ninjaResponse);
+            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(sasukeResponse);
 
             NinjaResponse result = ninjaService.createNinja(request);
 
-            assertThat(result).isEqualTo(ninjaResponse);
+            assertThat(result).isEqualTo(sasukeResponse);
 
             verify(ninjaRepository).existsByEmail("itachi@gmail.com");
             verify(passwordEncoder).encode("Itachi12345.");

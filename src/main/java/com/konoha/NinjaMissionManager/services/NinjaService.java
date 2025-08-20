@@ -38,7 +38,16 @@ public class NinjaService implements UserDetailsService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final VillageService villageService;
 
-    public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu){
+    public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu, Principal principal){
+        String authenticatedEmail = principal.getName();
+        Ninja authenticatedNinja = ninjaRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
+
+        boolean isKage = authenticatedNinja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
+        if (!isKage) {
+            throw new AccessDeniedException("You are not authorized to view the list of ninjas.");
+        }
+
         Specification<Ninja> specification = NinjaSpecificationBuilder.builder()
                 .rank(rank)
                 .villageId(villageId)

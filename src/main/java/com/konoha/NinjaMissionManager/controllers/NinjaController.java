@@ -39,9 +39,10 @@ public class NinjaController {
             @Parameter(description = "Filtro opcional por ID de la aldea del ninja")
             @RequestParam(required = false) Optional<Long> villageId,
             @Parameter(description = "Filtro opcional para saber si un ninja es ANBU")
-            @RequestParam(required = false) Optional<Boolean> isAnbu
+            @RequestParam(required = false) Optional<Boolean> isAnbu,
+            Principal principal
     ) {
-       List<NinjaResponse> ninjas = ninjaService.getAllNinjas(rank, villageId, isAnbu);
+       List<NinjaResponse> ninjas = ninjaService.getAllNinjas(rank, villageId, isAnbu, principal);
        return ResponseEntity.ok(ninjas);
     }
 

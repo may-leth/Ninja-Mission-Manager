@@ -207,7 +207,7 @@ public class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("Should return UNAUTHORIZED status on invalid login credentials")
+        @DisplayName("Should return FORBIDDEN status on invalid login credentials")
         void shouldReturnUnauthorizedForInvalidCredentials() throws Exception {
             NinjaLoginRequest request = new NinjaLoginRequest(
                     "naruto@gmail.com",
@@ -217,7 +217,7 @@ public class AuthControllerTest {
             mockMvc.perform(post("/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isUnauthorized());
+                    .andExpect(status().isForbidden());
         }
     }
 }
