@@ -21,13 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
@@ -596,6 +594,68 @@ public class NinjaServiceTest {
             assertThatThrownBy(() -> ninjaService.updateAsKage(naruto.getId(), updateRequest, principal))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already taken");
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteNinja")
+    class DeleteNinjaTests {
+
+        @Test
+        @DisplayName("Should delete ninja when authenticated user is the owner")
+        void shouldDeleteWhenOwner() {
+            when(principal.getName()).thenReturn(naruto.getEmail());
+            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+
+            ninjaService.deleteNinja(naruto.getId(), principal);
+
+            verify(ninjaRepository).findByEmail(naruto.getEmail());
+            verify(ninjaRepository).findById(naruto.getId());
+            verify(ninjaRepository).delete(naruto);
+        }
+
+        @Test
+        @DisplayName("Should delete ninja when authenticated user is Kage")
+        void shouldDeleteWhenKage() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
+
+            ninjaService.deleteNinja(naruto.getId(), principal);
+
+            verify(ninjaRepository).findByEmail(kage.getEmail());
+            verify(ninjaRepository).findById(naruto.getId());
+            verify(ninjaRepository).delete(naruto);
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when user is neither owner nor Kage")
+        void shouldThrowAccessDeniedWhenNotOwnerOrKage() {
+            when(principal.getName()).thenReturn(sasuke.getEmail());
+            when(ninjaRepository.findByEmail(sasuke.getEmail())).thenReturn(Optional.of(sasuke));
+
+            assertThatThrownBy(() -> ninjaService.deleteNinja(naruto.getId(), principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("You are not authorized");
+
+            verify(ninjaRepository).findByEmail(sasuke.getEmail());
+            verify(ninjaRepository, never()).findById(anyLong());
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when ninja to delete does not exist")
+        void shouldThrowNotFoundWhenNinjaDoesNotExist() {
+            when(principal.getName()).thenReturn(kage.getEmail());
+            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+            when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> ninjaService.deleteNinja(99L, principal))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Ninja not found with ID: 99");
+
+            verify(ninjaRepository).findByEmail(kage.getEmail());
+            verify(ninjaRepository).findById(99L);
         }
     }
 }

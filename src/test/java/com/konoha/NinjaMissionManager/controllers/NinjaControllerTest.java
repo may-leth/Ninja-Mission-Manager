@@ -23,6 +23,7 @@ import java.util.Set;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -259,6 +260,57 @@ class NinjaControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /ninjas/{id}: Delete ninja")
+    class DeleteNinja {
+
+        @Test
+        @DisplayName("Should delete own ninja profile successfully")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldDeleteOwnNinjaProfile() throws Exception {
+            mockMvc.perform(delete("/ninjas/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("Should delete any ninja successfully as Kage")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldDeleteAnyNinjaAsKage() throws Exception {
+            mockMvc.perform(delete("/ninjas/{id}", 2)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when a user tries to delete another ninja")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403WhenDeletingOtherNinja() throws Exception {
+            mockMvc.perform(delete("/ninjas/{id}", 3)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when ninja does not exist (for Kage)")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404WhenNinjaDoesNotExist() throws Exception {
+            mockMvc.perform(delete("/ninjas/{id}", 999)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Ninja not found")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden for anonymous user")
+        @WithAnonymousUser
+        void shouldReturn403ForAnonymousUser() throws Exception {
+            mockMvc.perform(delete("/ninjas/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
         }
     }
 }
