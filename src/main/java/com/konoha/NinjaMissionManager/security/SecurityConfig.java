@@ -25,7 +25,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/villages").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/villages", "/villages/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register/kage").hasRole("KAGE")
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
@@ -33,6 +33,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/ninjas/{id}").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/ninjas/{id}").hasRole("NINJA_USER")
                         .requestMatchers(HttpMethod.PUT, "/ninjas/kage/{id}").hasRole("KAGE")
+                        .requestMatchers(HttpMethod.DELETE, "/ninjas").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

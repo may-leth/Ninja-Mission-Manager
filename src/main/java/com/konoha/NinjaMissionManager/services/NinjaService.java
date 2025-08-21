@@ -129,6 +129,15 @@ public class NinjaService implements UserDetailsService {
         return persistAndMapNinja(ninjaToUpdate);
     }
 
+    @Transactional
+    public void deleteNinja(Long requestedId, Principal principal){
+        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
+        validateOwnerOrKageAccess(requestedId, authenticatedNinja);
+
+        Ninja ninjaToDelete = findNinjaById(requestedId);
+        ninjaRepository.delete(ninjaToDelete);
+    }
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return ninjaRepository.findByEmail(email)

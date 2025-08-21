@@ -100,4 +100,20 @@ public class NinjaController {
         NinjaResponse updatedNinja = ninjaService.updateAsKage(id, request, principal);
         return ResponseEntity.ok(updatedNinja);
     }
+
+    @Operation(summary = "Eliminar un ninja (solo Kage o el propio ninja)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Ninja eliminado con éxito"),
+            @ApiResponse(responseCode = "403", description = "Acceso no autorizado"),
+            @ApiResponse(responseCode = "404", description = "Ninja no encontrado")
+    })
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('NINJA_USER') or hasRole('KAGE')")
+    public ResponseEntity<Void> deleteNinja(
+            @Parameter(description = "ID del ninja a eliminar") @PathVariable Long id,
+            Principal principal
+    ) {
+        ninjaService.deleteNinja(id, principal);
+        return ResponseEntity.noContent().build();
+    }
 }
