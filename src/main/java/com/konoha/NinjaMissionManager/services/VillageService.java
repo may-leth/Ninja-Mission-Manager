@@ -1,14 +1,18 @@
 package com.konoha.NinjaMissionManager.services;
 
 import com.konoha.NinjaMissionManager.dtos.village.VillageMapper;
+import com.konoha.NinjaMissionManager.dtos.village.VillageRequest;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
+import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
+import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Village;
 import com.konoha.NinjaMissionManager.repositories.VillageRepository;
 import com.konoha.NinjaMissionManager.specifications.VillageSpecificationBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,13 +37,34 @@ public class VillageService {
     }
 
     public VillageResponse getVillageResponseById(Long id){
-        Village village = villageRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Village not found with ID: " + id));
+        Village village = getVillageEntityById(id);
         return villageMapper.entityToDto(village);
     }
 
     public Village getVillageEntityById(Long id){
         return villageRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Village not found with ID: " + id));
+    }
+
+    @Transactional
+    public VillageResponse createVillage(VillageRequest request, Ninja kage){
+        validateVillageNameNotTaken(request.name());
+        validateKageIsNotLeadingAnotherVillage(kage.getId());
+
+        Village village = villageMapper.dtoToEntity(request, kage);
+        Village savedVillage = villageRepository.save(village);
+        return villageMapper.entityToDto(savedVillage);
+    }
+
+    private void validateVillageNameNotTaken(String villageName) {
+        if (villageRepository.existsByNameIgnoreCase(villageName)) {
+            throw new ResourceConflictException("Village with this name already exists: " + villageName);
+        }
+    }
+
+    private void validateKageIsNotLeadingAnotherVillage(Long kageId) {
+        if (villageRepository.existsByKageId(kageId)) {
+            throw new ResourceConflictException("Ninja with ID " + kageId + " is already the Kage of another village.");
+        }
     }
 }

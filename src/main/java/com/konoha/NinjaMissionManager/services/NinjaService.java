@@ -58,6 +58,11 @@ public class NinjaService implements UserDetailsService {
         return ninjaMapper.entityToDto(ninja, missionMapper);
     }
 
+    public Ninja getNinjaEntityById(Long id) {
+        return ninjaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with id " + id));
+    }
+
     @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
         validateEmailNotTaken(request.email());

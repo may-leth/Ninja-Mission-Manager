@@ -1,14 +1,20 @@
 package com.konoha.NinjaMissionManager.controllers;
 
+import com.konoha.NinjaMissionManager.dtos.village.VillageRequest;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
+import com.konoha.NinjaMissionManager.models.Ninja;
+import com.konoha.NinjaMissionManager.services.NinjaService;
 import com.konoha.NinjaMissionManager.services.VillageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +26,7 @@ import java.util.Optional;
 @Tag(name = "Villages", description = "Endpoints para la gestión de Aldeas")
 public class VillageController {
     private final VillageService villageService;
+    private final NinjaService ninjaService;
 
     @Operation(summary = "Obtener todas las aldeas")
     @ApiResponses(value = {
@@ -47,5 +54,22 @@ public class VillageController {
             @PathVariable Long id){
         VillageResponse village = villageService.getVillageResponseById(id);
         return ResponseEntity.ok(village);
+    }
+
+    @Operation(summary = "Añadir una aldea")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Aldea creada exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida (error de validación)"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+            @ApiResponse(responseCode = "404", description = "Kage no encontrado con el ID proporcionado")
+    })
+    @PreAuthorize("hasRole('KAGE')")
+    @PostMapping
+    public ResponseEntity<VillageResponse> createVillage(
+            @Valid @RequestBody VillageRequest villageRequest) {
+        //COMENTAR CON CRIS LÓGICA Y DEPENDENCIA CIRCULAR x.x
+        Ninja kage = ninjaService.getNinjaEntityById(villageRequest.kageId());
+        VillageResponse response = villageService.createVillage(villageRequest, kage);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

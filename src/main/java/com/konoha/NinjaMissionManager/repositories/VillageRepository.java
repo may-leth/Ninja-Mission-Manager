@@ -7,4 +7,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface VillageRepository extends JpaRepository<Village, Long>, JpaSpecificationExecutor<Village> {
+    boolean existsByNameIgnoreCase(String name);
+    boolean existsByKageId(Long kageId);
 }
