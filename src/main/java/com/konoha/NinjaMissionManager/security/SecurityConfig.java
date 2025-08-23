@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/villages", "/villages/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/villages").hasRole("KAGE")
                         .requestMatchers(HttpMethod.POST, "/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register/kage").hasRole("KAGE")
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
