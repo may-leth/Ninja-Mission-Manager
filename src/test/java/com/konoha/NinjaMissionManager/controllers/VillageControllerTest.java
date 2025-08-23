@@ -2,6 +2,7 @@ package com.konoha.NinjaMissionManager.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.konoha.NinjaMissionManager.dtos.village.VillageRequest;
+import com.konoha.NinjaMissionManager.dtos.village.VillageUpdateRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,9 +16,8 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -164,6 +164,133 @@ public class VillageControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(newVillage)))
                     .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
+    @DisplayName("PUT /villages/{id}: update village")
+    class UpdateVillage {
+        @Test
+        @DisplayName("Should update village successfully (name and kage)")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldUpdateVillageSuccessfully() throws Exception{
+            VillageUpdateRequest request = new VillageUpdateRequest("Konohagakure", 6L);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id", is(1)))
+                    .andExpect(jsonPath("$.name", is("Konohagakure")))
+                    .andExpect(jsonPath("$.kage", is("Itachi Uchiha")));
+        }
+
+        @Test
+        @DisplayName("Should update village successfully (only name)")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldUpdateOnlyNameSuccessfully() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest("Shinobi no Kuni", null);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id", is(1)))
+                    .andExpect(jsonPath("$.name", is("Shinobi no Kuni")))
+                    .andExpect(jsonPath("$.kage", is("Tsunade")));
+        }
+
+        @Test
+        @DisplayName("Should update village successfully (only kage)")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldUpdateOnlyKageSuccessfully() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest(null, 6L);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id", is(1)))
+                    .andExpect(jsonPath("$.name", is("Konoha")))
+                    .andExpect(jsonPath("$.kage", is("Itachi Uchiha")));
+        }
+
+        @Test
+        @DisplayName("Should update village successfully when kage is the same")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldUpdateVillageWhenKageIsTheSame() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest("Konoha", 5L);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id", is(1)))
+                    .andExpect(jsonPath("$.kage", is("Tsunade")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden for a non-Kage user")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403ForNonKageUser() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest("Test", null);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when village does not exist")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404WhenVillageDoesNotExist() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest("Test", null);
+
+            mockMvc.perform(put("/villages/{id}", 999)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Village not found")));
+        }
+
+        @Test
+        @DisplayName("Should return 409 Conflict when new village name already exists")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn409WhenVillageNameExists() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest("Suna", null);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message", containsString("Village with this name already exists")));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when new kage does not exist")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404WhenNewKageDoesNotExist() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest(null, 999L);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Ninja not found")));
+        }
+
+        @Test
+        @DisplayName("Should return 409 Conflict when new kage already leads another village")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn409WhenNewKageAlreadyLeadsAnotherVillage() throws Exception {
+            VillageUpdateRequest request = new VillageUpdateRequest(null, 4L);
+
+            mockMvc.perform(put("/villages/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message", containsString("is already the Kage of another village.")));
         }
     }
 }

@@ -27,7 +27,6 @@ import java.util.Optional;
 @Tag(name = "Villages", description = "Endpoints para la gestión de Aldeas")
 public class VillageController {
     private final VillageService villageService;
-    private final NinjaService ninjaService;
 
     @Operation(summary = "Obtener todas las aldeas")
     @ApiResponses(value = {
