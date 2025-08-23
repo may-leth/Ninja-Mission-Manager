@@ -4,6 +4,9 @@ DELETE FROM ninja_roles;
 DELETE FROM ninjas;
 DELETE FROM villages;
 
+ALTER TABLE villages ALTER COLUMN id RESTART WITH 6;
+ALTER TABLE ninjas ALTER COLUMN id RESTART WITH 7;
+
 SET REFERENTIAL_INTEGRITY TRUE;
 
 INSERT INTO villages (id, name, kage_id) VALUES (1, 'Konoha', NULL);
@@ -32,5 +35,3 @@ INSERT INTO ninja_roles (ninja_id, roles) VALUES (5, 'ROLE_NINJA_USER');
 INSERT INTO ninja_roles (ninja_id, roles) VALUES (5, 'ROLE_KAGE');
 INSERT INTO ninja_roles (ninja_id, roles) VALUES (6, 'ROLE_NINJA_USER');
 INSERT INTO ninja_roles (ninja_id, roles) VALUES (6, 'ROLE_ANBU');
-
-ALTER TABLE ninjas ALTER COLUMN id RESTART WITH 7;
