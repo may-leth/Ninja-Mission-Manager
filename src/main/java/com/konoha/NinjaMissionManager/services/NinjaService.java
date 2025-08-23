@@ -63,6 +63,10 @@ public class NinjaService implements UserDetailsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with id " + id));
     }
 
+    public List<Ninja> getNinjasByVillageId(Long villageId) {
+        return ninjaRepository.findByVillageId(villageId);
+    }
+
     @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
         validateEmailNotTaken(request.email());
@@ -148,6 +152,10 @@ public class NinjaService implements UserDetailsService {
         return ninjaRepository.findByEmail(email)
                 .map(ninja -> new NinjaUserDetail(ninja))
                 .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + email));
+    }
+
+    public void saveAllNinjas(List<Ninja> ninjas){
+        ninjaRepository.saveAll(ninjas);
     }
 
     private Ninja getAuthenticatedNinja(Principal principal) {

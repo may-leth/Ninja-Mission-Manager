@@ -31,6 +31,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/villages", "/villages/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/villages").hasRole("KAGE")
                         .requestMatchers(HttpMethod.PUT, "/villages/{id}").hasRole("KAGE")
+                        .requestMatchers(HttpMethod.DELETE, "/villages/{id}").hasRole("KAGE")
                         .requestMatchers(HttpMethod.GET, "/ninjas").hasRole("KAGE")
                         .requestMatchers(HttpMethod.GET, "/ninjas/{id}").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/ninjas/{id}").hasRole("NINJA_USER")
