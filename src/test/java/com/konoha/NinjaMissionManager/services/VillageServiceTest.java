@@ -40,6 +40,9 @@ public class VillageServiceTest {
     @Mock
     private VillageMapper villageMapper;
 
+    @Mock
+    private NinjaService ninjaService;
+
     @InjectMocks
     private VillageService villageService;
 
@@ -130,17 +133,19 @@ public class VillageServiceTest {
         @Test
         @DisplayName("Should create a new village successfully")
         void shouldCreateVillageSuccessfully(){
+            when(ninjaService.getNinjaEntityById(villageRequest.kageId())).thenReturn(kage);
             when(villageRepository.existsByNameIgnoreCase(villageRequest.name())).thenReturn(false);
             when(villageRepository.existsByKageId(kage.getId())).thenReturn(false);
             when(villageMapper.dtoToEntity(villageRequest, kage)).thenReturn(village);
             when(villageRepository.save(village)).thenReturn(village);
             when(villageMapper.entityToDto(village)).thenReturn(villageResponse);
 
-            VillageResponse result = villageService.createVillage(villageRequest, kage);
+            VillageResponse result = villageService.createVillage(villageRequest);
 
             assertThat(result).isNotNull();
             assertThat(result.name()).isEqualTo(villageRequest.name());
 
+            verify(ninjaService).getNinjaEntityById(villageRequest.kageId());
             verify(villageRepository).existsByNameIgnoreCase(villageRequest.name());
             verify(villageRepository).existsByKageId(kage.getId());
             verify(villageRepository).save(village);
@@ -153,7 +158,7 @@ public class VillageServiceTest {
         void shouldThrowExceptionWhenVillageNameExists() {
             when(villageRepository.existsByNameIgnoreCase(villageRequest.name())).thenReturn(true);
 
-            assertThatThrownBy(() -> villageService.createVillage(villageRequest, kage))
+            assertThatThrownBy(() -> villageService.createVillage(villageRequest))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Village with this name already exists");
 
@@ -165,13 +170,15 @@ public class VillageServiceTest {
         @Test
         @DisplayName("Should throw ResourceConflictException when Kage is already leading a village")
         void shouldThrowExceptionWhenKageAlreadyHasAVillage() {
+            when(ninjaService.getNinjaEntityById(villageRequest.kageId())).thenReturn(kage);
             when(villageRepository.existsByNameIgnoreCase(villageRequest.name())).thenReturn(false);
             when(villageRepository.existsByKageId(kage.getId())).thenReturn(true);
 
-            assertThatThrownBy(() -> villageService.createVillage(villageRequest, kage))
+            assertThatThrownBy(() -> villageService.createVillage(villageRequest))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("is already the Kage of another village.");
 
+            verify(ninjaService).getNinjaEntityById(villageRequest.kageId());
             verify(villageRepository).existsByNameIgnoreCase(villageRequest.name());
             verify(villageRepository).existsByKageId(kage.getId());
             verify(villageRepository, never()).save(any(Village.class));

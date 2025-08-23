@@ -2,6 +2,7 @@ package com.konoha.NinjaMissionManager.controllers;
 
 import com.konoha.NinjaMissionManager.dtos.village.VillageRequest;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
+import com.konoha.NinjaMissionManager.dtos.village.VillageUpdateRequest;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.services.NinjaService;
 import com.konoha.NinjaMissionManager.services.VillageService;
@@ -67,9 +68,28 @@ public class VillageController {
     @PostMapping
     public ResponseEntity<VillageResponse> createVillage(
             @Valid @RequestBody VillageRequest villageRequest) {
-        //COMENTAR CON CRIS LÓGICA Y DEPENDENCIA CIRCULAR x.x
-        Ninja kage = ninjaService.getNinjaEntityById(villageRequest.kageId());
-        VillageResponse response = villageService.createVillage(villageRequest, kage);
+//        COMENTAR CON CRIS LÓGICA Y DEPENDENCIA CIRCULAR x.x
+//        Ninja kage = ninjaService.getNinjaEntityById(villageRequest.kageId());
+//        VillageResponse response = villageService.createVillage(villageRequest, kage);
+        VillageResponse response = villageService.createVillage(villageRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Actualizar una aldea por su ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Aldea actualizada exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida (error de validación)"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+            @ApiResponse(responseCode = "404", description = "Aldea o Kage no encontrado con el ID proporcionado"),
+            @ApiResponse(responseCode = "409", description = "Conflicto (nombre de aldea o Kage ya en uso)")
+    })
+    @PreAuthorize("hasRole('KAGE')")
+    @PutMapping("/{id}")
+    public ResponseEntity<VillageResponse> updateVillage(
+            @Parameter(description = "ID de la aldea a actualizar")
+            @PathVariable Long id,
+            @Valid @RequestBody VillageUpdateRequest villageUpdateRequest) {
+        VillageResponse response = villageService.updateVillage(id, villageUpdateRequest);
+        return ResponseEntity.ok(response);
     }
 }
