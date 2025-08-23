@@ -8,6 +8,7 @@ import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
+import com.konoha.NinjaMissionManager.models.Role;
 import com.konoha.NinjaMissionManager.models.Village;
 import com.konoha.NinjaMissionManager.repositories.VillageRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,9 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -349,6 +348,71 @@ public class VillageServiceTest {
             verify(ninjaService).getNinjaEntityById(updateKageRequest.kageId());
             verify(villageRepository).existsByKageAndIdNot(raikage, 1L);
             verify(villageRepository, never()).save(any(Village.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteVillage")
+    class DeleteVillageTest {
+        private Village villageToDelete;
+        private Ninja ninja1;
+        private Ninja ninja2;
+
+        @BeforeEach
+        void setup() {
+            ninja1 = new Ninja(2L, "Ninja Test 1", "test1@konoha.com", "password", Rank.GENIN, null, 0, false, new HashSet<>(), new HashSet<>());
+            ninja2 = new Ninja(3L, "Ninja Test 2", "test2@konoha.com", "password", Rank.CHUNIN, null, 0, false, new HashSet<>(), new HashSet<>());
+
+            villageToDelete = new Village(1L, "Konoha", ninja1);
+
+            ninja1.setVillage(villageToDelete);
+            ninja2.setVillage(villageToDelete);
+        }
+
+        @Test
+        @DisplayName("Should delete a village successfully when it has ninjas")
+        void shouldDeleteVillageWithNinjasSuccessfully() {
+            when(villageRepository.findById(1L)).thenReturn(Optional.of(villageToDelete));
+            when(ninjaService.getNinjasByVillageId(1L)).thenReturn(List.of(ninja1, ninja2));
+            doNothing().when(ninjaService).saveAllNinjas(anyList());
+            doNothing().when(villageRepository).delete(villageToDelete);
+
+            villageService.deleteVillage(1L);
+
+            verify(villageRepository).findById(1L);
+            verify(ninjaService).getNinjasByVillageId(1L);
+            verify(ninjaService).saveAllNinjas(anyList());
+            verify(villageRepository).delete(villageToDelete);
+        }
+
+        @Test
+        @DisplayName("should delete a village successfully when it has no ninjas")
+        void shouldDeleteVillageWithNoNinjasSuccessfully() {
+            when(villageRepository.findById(1L)).thenReturn(Optional.of(villageToDelete));
+            when(ninjaService.getNinjasByVillageId(1L)).thenReturn(Collections.emptyList());
+            doNothing().when(villageRepository).delete(villageToDelete);
+
+            villageService.deleteVillage(1L);
+
+            verify(villageRepository).findById(1L);
+            verify(ninjaService).getNinjasByVillageId(1L);
+            verify(ninjaService).saveAllNinjas(anyList());
+            verify(villageRepository).delete(villageToDelete);
+        }
+
+        @Test
+        @DisplayName("should throw ResourceNotFoundException when village to delete does not exist")
+        void shouldThrowExceptionWhenVillageToDeleteDoesNotExist() {
+            when(villageRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> villageService.deleteVillage(99L))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Village not found with ID: 99");
+
+            verify(villageRepository).findById(99L);
+            verify(ninjaService, never()).getNinjasByVillageId(anyLong());
+            verify(ninjaService, never()).saveAllNinjas(anyList());
+            verify(villageRepository, never()).delete(any(Village.class));
         }
     }
 }

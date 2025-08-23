@@ -293,4 +293,51 @@ public class VillageControllerTest {
                     .andExpect(jsonPath("$.message", containsString("is already the Kage of another village.")));
         }
     }
+
+    @Nested
+    @DisplayName("DELETE /villages/{id}: delete a village")
+    class DeleteVillage {
+        @Test
+        @DisplayName("Should delete a village with ninjas successfully and return 204 No Content")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldDeleteVillageWithNinjasSuccessfully() throws Exception {
+            mockMvc.perform(delete("/villages/{id}", 1))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get("/villages/{id}", 1))
+                    .andExpect(status().isNotFound());
+
+            mockMvc.perform(get("/ninjas/{1}", 1))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.village", is(nullValue())));
+        }
+
+        @Test
+        @DisplayName("Should delete a village with no ninjas successfully and return 204 No Content")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldDeleteVillageWithNoNinjasSuccessfully() throws Exception {
+            mockMvc.perform(delete("/villages/{id}", 3))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get("/villages/{id}", 3))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden for a non-Kage user")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403ForNonKageUser() throws Exception {
+            mockMvc.perform(delete("/villages/{id}", 1))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when village does not exist")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404WhenVillageDoesNotExist() throws Exception {
+            mockMvc.perform(delete("/villages/{id}", 999))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Village not found")));
+        }
+    }
 }
