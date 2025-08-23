@@ -30,7 +30,7 @@ public class Ninja {
     private Rank rank;
 
     @ManyToOne
-    @JoinColumn(name = "village_id", nullable = false)
+    @JoinColumn(name = "village_id")
     private Village village;
 
     @Builder.Default

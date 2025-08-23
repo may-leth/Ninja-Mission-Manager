@@ -91,4 +91,19 @@ public class VillageController {
         VillageResponse response = villageService.updateVillage(id, villageUpdateRequest);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(summary = "Eliminar una aldea por su ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Aldea eliminada exitosamente"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado"),
+            @ApiResponse(responseCode = "404", description = "Aldea no encontrada")
+    })
+    @PreAuthorize("hasRole('KAGE')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVillage(
+            @Parameter(description = "ID de la aldea a eliminar")
+            @PathVariable Long id) {
+        villageService.deleteVillage(id);
+        return ResponseEntity.noContent().build();
+    }
 }

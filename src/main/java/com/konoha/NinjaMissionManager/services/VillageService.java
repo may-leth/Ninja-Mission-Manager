@@ -84,6 +84,18 @@ public class VillageService {
         return villageMapper.entityToDto(updatedVillage);
     }
 
+    @Transactional
+    public void deleteVillage(Long id){
+        Village villageToDelete = getVillageEntityById(id);
+
+        List<Ninja> ninjasInVillage = ninjaService.getNinjasByVillageId(id);
+
+        ninjasInVillage.forEach(ninja -> ninja.setVillage(null));
+        ninjaService.saveAllNinjas(ninjasInVillage);
+
+        villageRepository.delete(villageToDelete);
+    }
+
     private void validateVillageNameNotTaken(String villageName) {
         if (villageRepository.existsByNameIgnoreCase(villageName)) {
             throw new ResourceConflictException("Village with this name already exists: " + villageName);
