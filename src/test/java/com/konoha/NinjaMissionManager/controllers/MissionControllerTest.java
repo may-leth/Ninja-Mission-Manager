@@ -1,7 +1,7 @@
 package com.konoha.NinjaMissionManager.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import org.junit.jupiter.api.DisplayName;
@@ -152,7 +152,7 @@ public class MissionControllerTest {
         @DisplayName("Should create a new mission successfully as a Kage")
         @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
         void shouldCreateMissionSuccessfully() throws Exception {
-            MissionRequest newMissionRequest = new MissionRequest(
+            MissionCreateRequest newMissionCreateRequest = new MissionCreateRequest(
                     "Misión de prueba exitosa",
                     "Descripción de la misión de prueba",
                     250,
@@ -162,7 +162,7 @@ public class MissionControllerTest {
 
             mockMvc.perform(post("/missions")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(newMissionRequest)))
+                            .content(objectMapper.writeValueAsString(newMissionCreateRequest)))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.title", is("Misión de prueba exitosa")))
                     .andExpect(jsonPath("$.difficulty", is("C")))
@@ -174,7 +174,7 @@ public class MissionControllerTest {
         @DisplayName("Should return 403 Forbidden when a non-Kage user tries to create a mission")
         @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
         void shouldReturn403ForNonKageUser() throws Exception {
-            MissionRequest newMissionRequest = new MissionRequest(
+            MissionCreateRequest newMissionCreateRequest = new MissionCreateRequest(
                     "Misión de prueba",
                     "Descripción de la misión",
                     100,
@@ -184,7 +184,7 @@ public class MissionControllerTest {
 
             mockMvc.perform(post("/missions")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(newMissionRequest)))
+                            .content(objectMapper.writeValueAsString(newMissionCreateRequest)))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.message", containsString("Only a Kage can create or manage missions.")));
         }
@@ -193,7 +193,7 @@ public class MissionControllerTest {
         @DisplayName("Should return 409 Conflict when a mission with the same title already exists")
         @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
         void shouldReturn409ForDuplicateTitle() throws Exception {
-            MissionRequest duplicateTitleRequest = new MissionRequest(
+            MissionCreateRequest duplicateTitleRequest = new MissionCreateRequest(
                     "Búsqueda del Gato Perdido Tora",
                     "Descripción duplicada",
                     50,
@@ -212,7 +212,7 @@ public class MissionControllerTest {
         @DisplayName("Should return 404 Not Found when a ninja ID does not exist")
         @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
         void shouldReturn404ForNonExistentNinja() throws Exception {
-            MissionRequest nonExistentNinjaRequest = new MissionRequest(
+            MissionCreateRequest nonExistentNinjaRequest = new MissionCreateRequest(
                     "Misión con ninja no existente",
                     "Descripción",
                     100,
@@ -231,7 +231,7 @@ public class MissionControllerTest {
         @DisplayName("Should return 403 Forbidden for a high-rank mission without a Jonin or Kage ninja")
         @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
         void shouldReturn403ForHighRankMissionWithLowRankNinjas() throws Exception {
-            MissionRequest highRankRequest = new MissionRequest(
+            MissionCreateRequest highRankRequest = new MissionCreateRequest(
                     "Misión de rango S peligrosa",
                     "Descripción de la misión de rango S",
                     10000,

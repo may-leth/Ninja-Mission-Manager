@@ -3,26 +3,27 @@ package com.konoha.NinjaMissionManager.dtos.mission;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.util.Set;
 
-public record MissionRequest(
-        @NotBlank(message = "Title is required")
+public record MissionCreateRequest(
+        @NotBlank(message = "Title cannot be empty")
         @Size(max = 100, message = "Title cannot exceed 100 characters")
         String title,
 
-        @NotBlank(message = "Description is required")
-        @Size(max = 500, message = "Description cannot exceed 500 characters")
+        @NotBlank(message = "Description cannot be empty")
         String description,
 
-        @NotNull(message = "Reward is required")
+        @NotNull(message = "Reward cannot be empty")
+        @PositiveOrZero(message = "Reward must be a positive number or zero")
         Integer reward,
 
-        @NotNull(message = "Difficulty is required")
+        @NotNull(message = "Difficulty cannot be empty")
         MissionDifficulty difficulty,
 
-        @NotNull(message = "Ninjas ID are required")
+        @NotNull(message = "Ninjas must be assigned to the mission")
         Set<Long> ninjaId
 ) {
 }

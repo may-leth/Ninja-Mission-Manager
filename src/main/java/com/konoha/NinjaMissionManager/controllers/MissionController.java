@@ -1,8 +1,9 @@
 package com.konoha.NinjaMissionManager.controllers;
 
-import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionResponse;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionUpdateRequest;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import com.konoha.NinjaMissionManager.services.MissionService;
@@ -77,11 +78,30 @@ public class MissionController {
     @PostMapping
     @PreAuthorize("hasRole('KAGE')")
     public ResponseEntity<MissionResponse> createMission(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Detalles de la nueva misión y ninjas asignados")
-            @RequestBody @Valid MissionRequest request,
+            @RequestBody @Valid MissionCreateRequest request,
             Principal principal
     ){
         MissionResponse newMission = missionService.createMission(request, principal);
         return ResponseEntity.status(HttpStatus.CREATED).body(newMission);
+    }
+
+    @Operation(summary = "Actualizar una misión")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Misión actualizada exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado, el usuario no tiene permisos para actualizar esta misión"),
+            @ApiResponse(responseCode = "404", description = "Misión o ninjas asignados no encontrados"),
+            @ApiResponse(responseCode = "409", description = "Conflicto de recursos, el título ya existe")
+    })
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('NINJA_USER') or hasRole('KAGE')")
+    public ResponseEntity<MissionResponse> updateMission(
+            @Parameter(description = "ID de la misión a actualizar")
+            @PathVariable Long id,
+            @RequestBody @Valid MissionUpdateRequest request,
+            Principal principal
+    ) {
+        MissionResponse updatedMission = missionService.updateMission(id, request, principal);
+        return ResponseEntity.ok().body(updatedMission);
     }
 }

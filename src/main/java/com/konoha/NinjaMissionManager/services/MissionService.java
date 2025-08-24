@@ -1,9 +1,6 @@
 package com.konoha.NinjaMissionManager.services;
 
-import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionResponse;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
+import com.konoha.NinjaMissionManager.dtos.mission.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.*;
@@ -17,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -60,7 +58,7 @@ public class MissionService {
     }
 
     @Transactional
-    public MissionResponse createMission(MissionRequest request, Principal principal){
+    public MissionResponse createMission(MissionCreateRequest request, Principal principal){
         validateKagePermission(principal);
         validateMissionTitle(request.title());
 
@@ -81,9 +79,65 @@ public class MissionService {
         return missionMapper.entityToDto(savedMission);
     }
 
+    @Transactional
+    public MissionResponse updateMission(Long id, MissionUpdateRequest request, Principal principal){
+        Ninja authenicatedNinja = ninjaService.getAuthenticatedNinja(principal);
+        Mission mission = findMissionById(id);
+        boolean isKage = isKage(authenicatedNinja);
+
+        if (!isKage){
+            if (!mission.getAssignedNinjas().contains(authenicatedNinja)){
+                throw new AccessDeniedException("You do not have permission to update this mission.");
+            }
+            if (request.status() == null || request.title() != null || request.description() != null || request.reward() != null || request.difficulty() != null || request.ninjaId() != null){
+                throw new AccessDeniedException("Only the mission status can be updated by a ninja.");
+            }
+            if (request.status() != mission.getStatus()) {
+                if (request.status() == Status.COMPLETED){
+                    updateCompletedMissionCount(mission);
+                }
+                mission.setStatus(request.status());
+            }
+            Mission updatedMission = missionRepository.save(mission);
+            return missionMapper.entityToDto(updatedMission);
+        }
+
+        if (!mission.getTitle().equals(request.title()) && missionRepository.existsByTitle(request.title())) {
+            throw new ResourceConflictException("Mission with this title already exists.");
+        }
+
+        Set<Ninja> assignedNinjas = getAndValidateAssignedNinjas(request.ninjaId(), request.difficulty());
+
+        if (request.status() != null && request.status() != mission.getStatus()) {
+            if (request.status() == Status.COMPLETED) {
+                updateCompletedMissionCount(mission);
+            }
+            mission.setStatus(request.status());
+        }
+
+        mission.setTitle(request.title());
+        mission.setDescription(request.description());
+        mission.setReward(request.reward());
+        mission.setDifficulty(request.difficulty());
+        mission.setAssignedNinjas(assignedNinjas);
+
+        Mission updatedMission = missionRepository.save(mission);
+        return missionMapper.entityToDto(updatedMission);
+    }
+
+    private void updateCompletedMissionCount(Mission mission) {
+        List<Ninja> ninjasToUpdate = new ArrayList<>(mission.getAssignedNinjas());
+
+        for (Ninja ninja : ninjasToUpdate) {
+            ninja.setMissionsCompletedCount(ninja.getMissionsCompletedCount() + 1);
+        }
+
+        ninjaService.saveAllNinjas(ninjasToUpdate);
+    }
+
     private void validateKagePermission(Principal principal) {
         Ninja authenticatedNinja = ninjaService.getAuthenticatedNinja(principal);
-        if (isKage(authenticatedNinja)) {
+        if (!isKage(authenticatedNinja)) {
             throw new AccessDeniedException("Only a Kage can create or manage missions.");
         }
     }
@@ -111,12 +165,11 @@ public class MissionService {
 
     private boolean isKage(Ninja ninja) {
         return ninja.getRoles().stream()
-                .noneMatch(role -> role.equals(Role.ROLE_KAGE));
+                .anyMatch(role -> role == Role.ROLE_KAGE);
     }
 
     private Mission findMissionById(Long id) {
         return missionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Mission not found with ID: " + id));
     }
-
 }

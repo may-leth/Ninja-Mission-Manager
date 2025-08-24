@@ -1,7 +1,7 @@
 package com.konoha.NinjaMissionManager.services;
 
+import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionResponse;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
@@ -54,7 +54,7 @@ public class MissionServiceTest {
     private Ninja kage;
     private Mission missionA;
     private Mission missionB;
-    private MissionRequest missionRequest;
+    private MissionCreateRequest missionCreateRequest;
     private MissionResponse missionAResponse;
     private MissionSummaryResponse missionASummaryResponse;
 
@@ -68,7 +68,7 @@ public class MissionServiceTest {
         missionA = new Mission(1L, "Misión de limpieza", "Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.COMPLETED, LocalDateTime.now(), Set.of(naruto, sasuke));
         missionB = new Mission(2L, "Captura del Jinchuriki", "Capturar a Killer B", 5000, MissionDifficulty.A, Status.COMPLETED, LocalDateTime.of(2025, 8, 24, 10, 0), Collections.emptySet());
 
-        missionRequest = new MissionRequest("Misión de protección", "Proteger al señor feudal", 500, MissionDifficulty.B, Set.of(naruto.getId()));
+        missionCreateRequest = new MissionCreateRequest("Misión de protección", "Proteger al señor feudal", 500, MissionDifficulty.B, Set.of(naruto.getId()));
         missionAResponse = new MissionResponse(1L,"Misión de limpieza","Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.COMPLETED, LocalDateTime.now(), Collections.emptySet());
         missionASummaryResponse = new MissionSummaryResponse(1L,"Misión de limpieza", MissionDifficulty.D, Status.COMPLETED);
 
@@ -223,11 +223,11 @@ public class MissionServiceTest {
             when(missionRepository.save(any(Mission.class))).thenReturn(missionA);
             when(missionMapper.entityToDto(any(Mission.class))).thenReturn(missionAResponse);
 
-            MissionResponse result = missionService.createMission(missionRequest, principal);
+            MissionResponse result = missionService.createMission(missionCreateRequest, principal);
 
             assertThat(result).isEqualTo(missionAResponse);
             verify(ninjaService).getAuthenticatedNinja(principal);
-            verify(missionRepository).existsByTitle(missionRequest.title());
+            verify(missionRepository).existsByTitle(missionCreateRequest.title());
             verify(ninjaService).getNinjaEntityById(naruto.getId());
             verify(missionRepository).save(any(Mission.class));
             verify(missionMapper).entityToDto(any(Mission.class));
@@ -238,7 +238,7 @@ public class MissionServiceTest {
         void shouldThrowAccessDeniedForNonKage() {
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(naruto);
 
-            assertThatThrownBy(() -> missionService.createMission(missionRequest, principal))
+            assertThatThrownBy(() -> missionService.createMission(missionCreateRequest, principal))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("Only a Kage can create or manage missions.");
 
@@ -252,18 +252,18 @@ public class MissionServiceTest {
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
             when(missionRepository.existsByTitle(anyString())).thenReturn(true);
 
-            assertThatThrownBy(() -> missionService.createMission(missionRequest, principal))
+            assertThatThrownBy(() -> missionService.createMission(missionCreateRequest, principal))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Mission with this title already exists.");
 
             verify(ninjaService).getAuthenticatedNinja(principal);
-            verify(missionRepository).existsByTitle(missionRequest.title());
+            verify(missionRepository).existsByTitle(missionCreateRequest.title());
         }
 
         @Test
         @DisplayName("Should throw ResourceNotFoundException for a non-existent ninja ID")
         void shouldThrowNotFoundForNonExistentNinja() {
-            MissionRequest badRequest = new MissionRequest("Misión de entrenamiento", "Entrenamiento de combate", 50, MissionDifficulty.D, Set.of(999L));
+            MissionCreateRequest badRequest = new MissionCreateRequest("Misión de entrenamiento", "Entrenamiento de combate", 50, MissionDifficulty.D, Set.of(999L));
 
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
             when(missionRepository.existsByTitle(anyString())).thenReturn(false);
@@ -280,7 +280,7 @@ public class MissionServiceTest {
         @Test
         @DisplayName("Should throw AccessDeniedException for a high-rank mission without a Jonin or higher ninja")
         void shouldThrowAccessDeniedForHighRankMission() {
-            MissionRequest highRankRequest = new MissionRequest("Misión S", "Misión de alto rango", 5000, MissionDifficulty.S, Set.of(naruto.getId()));
+            MissionCreateRequest highRankRequest = new MissionCreateRequest("Misión S", "Misión de alto rango", 5000, MissionDifficulty.S, Set.of(naruto.getId()));
 
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
             when(missionRepository.existsByTitle(anyString())).thenReturn(false);
