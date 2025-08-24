@@ -4,6 +4,7 @@ import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
 import com.konoha.NinjaMissionManager.dtos.ninja.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
+import com.konoha.NinjaMissionManager.models.Mission;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
@@ -144,6 +145,12 @@ public class NinjaService implements UserDetailsService {
         validateOwnerOrKageAccess(requestedId, authenticatedNinja);
 
         Ninja ninjaToDelete = findNinjaById(requestedId);
+
+        for (Mission mission : ninjaToDelete.getAssignedMissions()) {
+            mission.getAssignedNinjas().remove(ninjaToDelete);
+        }
+        ninjaToDelete.getAssignedMissions().clear();
+
         ninjaRepository.delete(ninjaToDelete);
     }
 

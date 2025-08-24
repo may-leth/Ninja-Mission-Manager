@@ -7,14 +7,14 @@ DROP TABLE IF EXISTS missions;
 DROP TABLE IF EXISTS villages;
 
 CREATE TABLE villages (
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     kage_id BIGINT,
     FOREIGN KEY (kage_id) REFERENCES ninjas(id)
 );
 
 CREATE TABLE ninjas (
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE ninja_roles (
 );
 
 CREATE TABLE missions (
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     reward INT,
