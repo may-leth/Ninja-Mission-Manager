@@ -1,5 +1,7 @@
 package com.konoha.NinjaMissionManager.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import org.junit.jupiter.api.DisplayName;
@@ -13,9 +15,12 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.Collections;
+import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -27,6 +32,9 @@ public class MissionControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Nested
     @DisplayName("GET /missions: Retrieve all missions with filters")
@@ -133,6 +141,121 @@ public class MissionControllerTest {
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message", containsString("Mission not found")));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /missions: Create a new mission")
+    class CreateMission {
+
+        @Test
+        @DisplayName("Should create a new mission successfully as a Kage")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldCreateMissionSuccessfully() throws Exception {
+            MissionRequest newMissionRequest = new MissionRequest(
+                    "Misión de prueba exitosa",
+                    "Descripción de la misión de prueba",
+                    250,
+                    MissionDifficulty.C,
+                    Set.of(1L, 2L)
+            );
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(newMissionRequest)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.title", is("Misión de prueba exitosa")))
+                    .andExpect(jsonPath("$.difficulty", is("C")))
+                    .andExpect(jsonPath("$.status", is("PENDING")))
+                    .andExpect(jsonPath("$.assignedNinjas", hasSize(2)));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when a non-Kage user tries to create a mission")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403ForNonKageUser() throws Exception {
+            MissionRequest newMissionRequest = new MissionRequest(
+                    "Misión de prueba",
+                    "Descripción de la misión",
+                    100,
+                    MissionDifficulty.D,
+                    Set.of(1L)
+            );
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(newMissionRequest)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("Only a Kage can create or manage missions.")));
+        }
+
+        @Test
+        @DisplayName("Should return 409 Conflict when a mission with the same title already exists")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn409ForDuplicateTitle() throws Exception {
+            MissionRequest duplicateTitleRequest = new MissionRequest(
+                    "Búsqueda del Gato Perdido Tora",
+                    "Descripción duplicada",
+                    50,
+                    MissionDifficulty.D,
+                    Collections.emptySet()
+            );
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(duplicateTitleRequest)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message", containsString("Mission with this title already exists.")));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when a ninja ID does not exist")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404ForNonExistentNinja() throws Exception {
+            MissionRequest nonExistentNinjaRequest = new MissionRequest(
+                    "Misión con ninja no existente",
+                    "Descripción",
+                    100,
+                    MissionDifficulty.C,
+                    Set.of(1L, 999L)
+            );
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(nonExistentNinjaRequest)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Ninja not found with id 999")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden for a high-rank mission without a Jonin or Kage ninja")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn403ForHighRankMissionWithLowRankNinjas() throws Exception {
+            MissionRequest highRankRequest = new MissionRequest(
+                    "Misión de rango S peligrosa",
+                    "Descripción de la misión de rango S",
+                    10000,
+                    MissionDifficulty.S,
+                    Set.of(1L)
+            );
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(highRankRequest)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("High-rank missions must be assigned to at least one Jonin or higher-rank ninja.")));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when request body is invalid")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn400ForInvalidRequestBody() throws Exception {
+            String invalidJson = "{ \"title\": \"\", \"description\": \"\", \"reward\": -1, \"difficulty\": \"INVALID\", \"ninjaId\": [] }";
+
+            mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(invalidJson))
+                    .andExpect(status().isBadRequest());
         }
     }
 }
