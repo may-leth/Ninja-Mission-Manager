@@ -158,7 +158,7 @@ public class NinjaService implements UserDetailsService {
         ninjaRepository.saveAll(ninjas);
     }
 
-    private Ninja getAuthenticatedNinja(Principal principal) {
+    public Ninja getAuthenticatedNinja(Principal principal) {
         String authenticatedEmail = principal.getName();
         return ninjaRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + authenticatedEmail));
