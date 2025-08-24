@@ -4,5 +4,9 @@ public enum Rank {
     GENIN,
     CHUNIN,
     JONIN,
-    KAGE
+    KAGE;
+
+    public boolean isAbove(Rank otherRank) {
+        return this.ordinal() > otherRank.ordinal();
+    }
 }

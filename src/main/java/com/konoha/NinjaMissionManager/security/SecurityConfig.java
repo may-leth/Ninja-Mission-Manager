@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/ninjas/{id}").hasRole("NINJA_USER")
                         .requestMatchers(HttpMethod.PUT, "/ninjas/kage/{id}").hasRole("KAGE")
                         .requestMatchers(HttpMethod.DELETE, "/ninjas").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/missions", "/missions/{id}").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

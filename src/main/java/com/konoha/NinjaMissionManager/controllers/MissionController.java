@@ -1,5 +1,6 @@
 package com.konoha.NinjaMissionManager.controllers;
 
+import com.konoha.NinjaMissionManager.dtos.mission.MissionRequest;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionResponse;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
@@ -10,8 +11,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -60,5 +64,24 @@ public class MissionController {
     ){
         MissionResponse mission = missionService.getMissionById(id, principal);
         return ResponseEntity.ok(mission);
+    }
+
+    @Operation(summary = "Crear una nueva misión (solo para Kage)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Misión creada exitosamente"),
+            @ApiResponse(responseCode = "400", description = "Solicitud inválida"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado, el usuario no es un Kage"),
+            @ApiResponse(responseCode = "404", description = "Uno o más ninjas asignados no fueron encontrados"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @PostMapping
+    @PreAuthorize("hasRole('KAGE')")
+    public ResponseEntity<MissionResponse> createMission(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Detalles de la nueva misión y ninjas asignados")
+            @RequestBody @Valid MissionRequest request,
+            Principal principal
+    ){
+        MissionResponse newMission = missionService.createMission(request, principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newMission);
     }
 }
