@@ -29,8 +29,10 @@ public class MissionService {
 
         MissionSpecificationBuilder builder = MissionSpecificationBuilder.builder()
                 .difficulty(difficulty)
-                .status(status)
-                .assignedToNinja(assignToNinjaId);
+                .status(status);
+
+        Optional<Long> ninjaIdToFilter = isKage(authenticatedNinja) ? assignToNinjaId : Optional.of(authenticatedNinja.getId());
+        builder.assignedToNinja(ninjaIdToFilter);
 
         Specification<Mission> finalSpecification = builder.build();
         List<Mission> missions = missionRepository.findAll(finalSpecification);
@@ -102,6 +104,15 @@ public class MissionService {
 
         Mission updatedMission = missionRepository.save(mission);
         return missionMapper.entityToDto(updatedMission);
+    }
+
+    @Transactional
+    public void deleteMission(Long id, Principal principal){
+        validateKagePermission(principal);
+
+        Mission missionToDelete = findMissionById(id);
+
+        missionRepository.delete(missionToDelete);
     }
 
     private MissionResponse updateMissionAsNinja(Mission mission, Ninja authenticatedNinja, MissionUpdateRequest request){

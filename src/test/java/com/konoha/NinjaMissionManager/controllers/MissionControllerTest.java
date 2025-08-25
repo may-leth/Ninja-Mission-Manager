@@ -60,7 +60,7 @@ public class MissionControllerTest {
             mockMvc.perform(get("/missions")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(7)));
+                    .andExpect(jsonPath("$", hasSize(3)));
         }
 
         @Test

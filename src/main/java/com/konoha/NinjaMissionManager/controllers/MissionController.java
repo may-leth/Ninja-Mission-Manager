@@ -104,4 +104,22 @@ public class MissionController {
         MissionResponse updatedMission = missionService.updateMission(id, request, principal);
         return ResponseEntity.ok().body(updatedMission);
     }
+
+    @Operation(summary = "Eliminar una misión (solo para Kage)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Misión eliminada exitosamente"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado, el usuario no es un Kage"),
+            @ApiResponse(responseCode = "404", description = "Misión no encontrada"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('KAGE')")
+    public ResponseEntity<Void> deleteMission(
+            @Parameter(description = "ID de la misión a eliminar")
+            @PathVariable Long id,
+            Principal principal
+    ) {
+        missionService.deleteMission(id, principal);
+        return ResponseEntity.noContent().build();
+    }
 }
