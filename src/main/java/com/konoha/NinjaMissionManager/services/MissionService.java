@@ -14,10 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,7 +47,7 @@ public class MissionService {
         boolean isKage = authenticatedNinja.getRoles().stream()
                 .anyMatch(role -> role.equals(Role.ROLE_KAGE));
 
-        if (isKage(authenticatedNinja) && !mission.getAssignedNinjas().contains(authenticatedNinja)) {
+        if (!isKage(authenticatedNinja) && !mission.getAssignedNinjas().contains(authenticatedNinja)) {
             throw new AccessDeniedException("You do not have permission to view this mission.");
         }
 
@@ -62,17 +59,13 @@ public class MissionService {
         validateKagePermission(principal);
         validateMissionTitle(request.title());
 
+        Mission newMission = missionMapper.dtoToEntity(request);
+
         Set<Ninja> assignedNinjas = getAndValidateAssignedNinjas(request.ninjaId(), request.difficulty());
 
-        Mission newMission = Mission.builder()
-                .title(request.title())
-                .description(request.description())
-                .reward(request.reward())
-                .difficulty(request.difficulty())
-                .status(Status.PENDING)
-                .creationDate(LocalDateTime.now())
-                .assignedNinjas(assignedNinjas)
-                .build();
+        newMission.setStatus(Status.PENDING);
+        newMission.setAssignedNinjas(assignedNinjas);
+        newMission.setCreationDate(LocalDateTime.now());
 
         Mission savedMission = missionRepository.save(newMission);
 
@@ -81,32 +74,19 @@ public class MissionService {
 
     @Transactional
     public MissionResponse updateMission(Long id, MissionUpdateRequest request, Principal principal){
-        Ninja authenicatedNinja = ninjaService.getAuthenticatedNinja(principal);
+        Ninja authenticatedNinja = ninjaService.getAuthenticatedNinja(principal);
         Mission mission = findMissionById(id);
-        boolean isKage = isKage(authenicatedNinja);
+        boolean isKage = isKage(authenticatedNinja);
 
         if (!isKage){
-            if (!mission.getAssignedNinjas().contains(authenicatedNinja)){
-                throw new AccessDeniedException("You do not have permission to update this mission.");
-            }
-            if (request.status() == null || request.title() != null || request.description() != null || request.reward() != null || request.difficulty() != null || request.ninjaId() != null){
-                throw new AccessDeniedException("Only the mission status can be updated by a ninja.");
-            }
-            if (request.status() != mission.getStatus()) {
-                if (request.status() == Status.COMPLETED){
-                    updateCompletedMissionCount(mission);
-                }
-                mission.setStatus(request.status());
-            }
-            Mission updatedMission = missionRepository.save(mission);
-            return missionMapper.entityToDto(updatedMission);
+            return updateMissionAsNinja(mission, authenticatedNinja, request);
         }
 
-        if (!mission.getTitle().equals(request.title()) && missionRepository.existsByTitle(request.title())) {
-            throw new ResourceConflictException("Mission with this title already exists.");
+        if (request.title() != null && !mission.getTitle().equals(request.title())) {
+            validateMissionTitle(request.title());
         }
 
-        Set<Ninja> assignedNinjas = getAndValidateAssignedNinjas(request.ninjaId(), request.difficulty());
+        missionMapper.updateEntityFromDto(request, mission);
 
         if (request.status() != null && request.status() != mission.getStatus()) {
             if (request.status() == Status.COMPLETED) {
@@ -115,11 +95,31 @@ public class MissionService {
             mission.setStatus(request.status());
         }
 
-        mission.setTitle(request.title());
-        mission.setDescription(request.description());
-        mission.setReward(request.reward());
-        mission.setDifficulty(request.difficulty());
-        mission.setAssignedNinjas(assignedNinjas);
+        Mission updatedMission = missionRepository.save(mission);
+        return missionMapper.entityToDto(updatedMission);
+    }
+
+    private MissionResponse updateMissionAsNinja(Mission mission, Ninja authenticatedNinja, MissionUpdateRequest request){
+        if (!mission.getAssignedNinjas().contains(authenticatedNinja)){
+            throw new AccessDeniedException("You do not have permission to update this mission.");
+        }
+
+        boolean anyOtherFieldIsPresent = request.title() != null ||
+                request.description() != null ||
+                request.reward() != null ||
+                request.difficulty() != null ||
+                request.ninjaId() != null;
+
+        if (anyOtherFieldIsPresent) {
+            throw new AccessDeniedException("Only the mission status can be updated by a ninja.");
+        }
+
+        if (request.status() != null && request.status() != mission.getStatus()) {
+            if (request.status() == Status.COMPLETED) {
+                updateCompletedMissionCount(mission);
+            }
+            mission.setStatus(request.status());
+        }
 
         Mission updatedMission = missionRepository.save(mission);
         return missionMapper.entityToDto(updatedMission);
@@ -131,7 +131,6 @@ public class MissionService {
         for (Ninja ninja : ninjasToUpdate) {
             ninja.setMissionsCompletedCount(ninja.getMissionsCompletedCount() + 1);
         }
-
         ninjaService.saveAllNinjas(ninjasToUpdate);
     }
 

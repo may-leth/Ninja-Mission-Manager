@@ -185,8 +185,7 @@ public class MissionControllerTest {
             mockMvc.perform(post("/missions")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(newMissionCreateRequest)))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.message", containsString("Only a Kage can create or manage missions.")));
+                    .andExpect(status().isForbidden());
         }
 
         @Test

@@ -217,9 +217,12 @@ public class MissionServiceTest {
         @Test
         @DisplayName("Should create a mission successfully as a Kage")
         void shouldCreateMissionAsKage() {
+            Mission mission = new Mission();
+
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
             when(missionRepository.existsByTitle(anyString())).thenReturn(false);
             when(ninjaService.getNinjaEntityById(naruto.getId())).thenReturn(naruto);
+            when(missionMapper.dtoToEntity(any(MissionCreateRequest.class))).thenReturn(mission);
             when(missionRepository.save(any(Mission.class))).thenReturn(missionA);
             when(missionMapper.entityToDto(any(Mission.class))).thenReturn(missionAResponse);
 
