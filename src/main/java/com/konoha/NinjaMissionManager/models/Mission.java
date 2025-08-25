@@ -1,5 +1,6 @@
 package com.konoha.NinjaMissionManager.models;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -9,9 +10,11 @@ import java.util.Set;
 @Entity
 @Table(name = "missions")
 @Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Mission {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
@@ -34,10 +37,16 @@ public class Mission {
     @Column(name = "status")
     Status status = Status.PENDING;
 
-    @Column(nullable = false)
+    @Column(name = "creation_date", nullable = false)
     LocalDateTime creationDate;
 
+    @JsonManagedReference
     @Builder.Default
-    @ManyToMany(mappedBy = "assignedMissions")
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "ninja_missions",
+            joinColumns = @JoinColumn(name = "mission_id"),
+            inverseJoinColumns = @JoinColumn(name = "ninja_id")
+    )
     private Set<Ninja> assignedNinjas = new HashSet<>();
 }
