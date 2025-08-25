@@ -88,6 +88,11 @@ public class MissionService {
 
         missionMapper.updateEntityFromDto(request, mission);
 
+        if (request.ninjaId() != null) {
+            Set<Ninja> newAssignedNinjas = getAndValidateAssignedNinjas(request.ninjaId(), mission.getDifficulty());
+            mission.setAssignedNinjas(newAssignedNinjas);
+        }
+
         if (request.status() != null && request.status() != mission.getStatus()) {
             if (request.status() == Status.COMPLETED) {
                 updateCompletedMissionCount(mission);
@@ -111,7 +116,7 @@ public class MissionService {
                 request.ninjaId() != null;
 
         if (anyOtherFieldIsPresent) {
-            throw new AccessDeniedException("Only the mission status can be updated by a ninja.");
+            throw new AccessDeniedException("Only the mission status can be updated by a assigned ninja.");
         }
 
         if (request.status() != null && request.status() != mission.getStatus()) {

@@ -2,6 +2,7 @@ package com.konoha.NinjaMissionManager.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionUpdateRequest;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,7 @@ import java.util.Set;
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -252,6 +254,138 @@ public class MissionControllerTest {
             String invalidJson = "{ \"title\": \"\", \"description\": \"\", \"reward\": -1, \"difficulty\": \"INVALID\", \"ninjaId\": [] }";
 
             mockMvc.perform(post("/missions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(invalidJson))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("PUT /missions/{id}: Update a mission")
+    class UpdateMission {
+        @Test
+        @DisplayName("Should update mission successfully as a kage")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldUpdateMissionSuccessfullyAsKage() throws Exception {
+            String newTitle = "Misión de Reconstrucción de Konoha";
+            String newDescription = "Ayudar a reconstruir la aldea después de la invasión.";
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    newTitle,
+                    newDescription,
+                    500,
+                    MissionDifficulty.B,
+                    Status.ACTIVE,
+                    Set.of(1L, 2L)
+            );
+
+            mockMvc.perform(put("/missions/{id}", 7)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id", is(7)))
+                    .andExpect(jsonPath("$.title", is(newTitle)))
+                    .andExpect(jsonPath("$.status", is("ACTIVE")))
+                    .andExpect(jsonPath("$.assignedNinjas", hasSize(2)));
+        }
+
+        @Test
+        @DisplayName("Should return 409 Conflict when a Kage tries to update with a duplicate title")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn409ForDuplicateTitleAsKage() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    "Búsqueda del Gato Perdido Tora",
+                    null, null, null, Status.ACTIVE, null
+            );
+
+            mockMvc.perform(put("/missions/{id}", 7)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message", containsString("Mission with this title already exists.")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden for a Kage updating a high-rank mission with only low-rank ninjas")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn403ForHighRankMissionAsKage() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    null, null, null, MissionDifficulty.S, Status.ACTIVE, Set.of(1L, 2L)
+            );
+
+            mockMvc.perform(put("/missions/{id}", 4)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("High-rank missions must be assigned to at least one Jonin or higher-rank ninja.")));
+        }
+
+        @Test
+        @DisplayName("Should update mission status successfully as an assigned ninja")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldUpdateMissionStatusAsAssignedNinja() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    null, null, null, null, Status.ACTIVE, null
+            );
+
+            mockMvc.perform(put("/missions/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status", is("ACTIVE")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when an unassigned ninja tries to update a mission")
+        @WithMockUser(username = "kakashi@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403ForUnassignedNinja() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    null, null, null, null, Status.ACTIVE, Set.of(1L)
+            );
+
+            mockMvc.perform(put("/missions/{id}", 7)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("permission")));
+        }
+
+        @Test
+        @DisplayName("Should return 403 Forbidden when a ninja tries to update a field other than status")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403WhenNinjaUpdatesOtherField() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    "Nuevo Título", null, null, null, Status.ACTIVE, null
+            );
+
+            mockMvc.perform(put("/missions/{id}", 1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message", containsString("Only the mission status can be updated by a assigned ninja.")));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when updating a non-existent mission")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404ForNonExistentMission() throws Exception {
+            MissionUpdateRequest updateRequest = new MissionUpdateRequest(
+                    "Infiltración en la Aldea de la Lluvia", "Jiraiya se infiltra...", 50000, MissionDifficulty.S, Status.COMPLETED, Set.of()
+            );
+
+            mockMvc.perform(put("/missions/{id}", 999)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Mission not found with ID: 999")));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when request body is invalid")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn400ForInvalidRequestBody() throws Exception {
+            String invalidJson = "{ \"title\": \"\", \"difficulty\": \"INVALID\", \"reward\": -1 }";
+
+            mockMvc.perform(put("/missions/{id}", 1)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(invalidJson))
                     .andExpect(status().isBadRequest());

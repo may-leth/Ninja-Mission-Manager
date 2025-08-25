@@ -1,9 +1,6 @@
 package com.konoha.NinjaMissionManager.services;
 
-import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionResponse;
-import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
+import com.konoha.NinjaMissionManager.dtos.mission.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.*;
@@ -57,6 +54,7 @@ public class MissionServiceTest {
     private MissionCreateRequest missionCreateRequest;
     private MissionResponse missionAResponse;
     private MissionSummaryResponse missionASummaryResponse;
+    private MissionUpdateRequest updateRequest;
 
 
     @BeforeEach
@@ -71,6 +69,7 @@ public class MissionServiceTest {
         missionCreateRequest = new MissionCreateRequest("Misión de protección", "Proteger al señor feudal", 500, MissionDifficulty.B, Set.of(naruto.getId()));
         missionAResponse = new MissionResponse(1L,"Misión de limpieza","Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.COMPLETED, LocalDateTime.now(), Collections.emptySet());
         missionASummaryResponse = new MissionSummaryResponse(1L,"Misión de limpieza", MissionDifficulty.D, Status.COMPLETED);
+        updateRequest = new MissionUpdateRequest("Misión de limpieza", null, null, null, null, null);
 
         naruto.setAssignedMissions(Set.of(missionA));
         sasuke.setAssignedMissions(Set.of(missionA));
@@ -296,6 +295,138 @@ public class MissionServiceTest {
             verify(ninjaService).getAuthenticatedNinja(principal);
             verify(missionRepository).existsByTitle(highRankRequest.title());
             verify(ninjaService).getNinjaEntityById(naruto.getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("updateMission")
+    class UpdateMissionTests {
+        @Test
+        @DisplayName("Should update mission as a kage and change title")
+        void shouldUpdateMissionAsKageAndChangeTitle() {
+            MissionUpdateRequest request = new MissionUpdateRequest("Nuevo Titulo", null, null, null, null, null);
+            Mission updatedMission = new Mission();
+
+            updatedMission.setTitle("Nuevo Titulo");
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+            when(missionRepository.existsByTitle("Nuevo Titulo")).thenReturn(false);
+            when(missionRepository.save(any(Mission.class))).thenReturn(updatedMission);
+            when(missionMapper.entityToDto(updatedMission)).thenReturn(new MissionResponse(1L, "Nuevo Titulo", null, null, null, null, null, null));
+
+            MissionResponse result = missionService.updateMission(missionA.getId(), request, principal);
+
+            assertThat(result.title()).isEqualTo("Nuevo Titulo");
+            verify(missionMapper).updateEntityFromDto(request, missionA);
+            verify(missionRepository).save(missionA);
+        }
+
+        @Test
+        @DisplayName("Should update mission as a Kage without changing title if it is the same")
+        void shouldUpdateMissionAsKageWithoutChangingTitleIfIsSame() {
+            MissionUpdateRequest request = new MissionUpdateRequest(missionA.getTitle(), null, null, null, null, null);
+            Mission updatedMission = new Mission();
+            updatedMission.setTitle(missionA.getTitle());
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+            when(missionRepository.save(any(Mission.class))).thenReturn(updatedMission);
+            when(missionMapper.entityToDto(updatedMission)).thenReturn(new MissionResponse(1L, missionA.getTitle(), null, null, null, null, null, null));
+
+            MissionResponse result = missionService.updateMission(missionA.getId(), request, principal);
+
+            assertThat(result.title()).isEqualTo(missionA.getTitle());
+            verify(missionMapper).updateEntityFromDto(request, missionA);
+            verify(missionRepository).save(missionA);
+            verify(missionRepository, never()).existsByTitle(anyString());
+        }
+
+        @Test
+        @DisplayName("Should update mission as a Kage and change status to COMPLETED and update ninja count")
+        void shouldUpdateMissionAsKageAndChangeStatus() {
+            Mission missionWithPendingStatus = new Mission(1L, "Misión de limpieza", "Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.PENDING, LocalDateTime.now(), Set.of(naruto));
+            MissionUpdateRequest request = new MissionUpdateRequest(null, null, null, null, Status.COMPLETED, null);
+            Mission completedMission = new Mission(1L, "Misión de limpieza", "Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.COMPLETED, LocalDateTime.now(), Set.of(naruto));
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(missionWithPendingStatus.getId())).thenReturn(Optional.of(missionWithPendingStatus));
+            doNothing().when(ninjaService).saveAllNinjas(anyList());
+            when(missionRepository.save(any(Mission.class))).thenReturn(completedMission);
+            when(missionMapper.entityToDto(completedMission)).thenReturn(new MissionResponse(1L, "Misión de limpieza", null, null, null, Status.COMPLETED, null, null));
+
+            MissionResponse result = missionService.updateMission(missionWithPendingStatus.getId(), request, principal);
+
+            assertThat(result.status()).isEqualTo(Status.COMPLETED);
+            verify(missionMapper).updateEntityFromDto(request, missionWithPendingStatus);
+            verify(ninjaService).saveAllNinjas(anyList());
+            verify(missionRepository).save(missionWithPendingStatus);
+        }
+
+        @Test
+        @DisplayName("Should update mission as a ninja and change status to COMPLETED")
+        void shouldUpdateMissionAsNinjaAndChangeStatus() {
+            Mission missionWithPendingStatus = new Mission(1L, "Misión de limpieza", "Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.PENDING, LocalDateTime.now(), Set.of(naruto));
+            MissionUpdateRequest request = new MissionUpdateRequest(null, null, null, null, Status.COMPLETED, null);
+            Mission completedMission = new Mission(1L, "Misión de limpieza", "Limpia la propiedad del señor feudal", 50, MissionDifficulty.D, Status.COMPLETED, LocalDateTime.now(), Set.of(naruto));
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(naruto);
+            when(missionRepository.findById(missionWithPendingStatus.getId())).thenReturn(Optional.of(missionWithPendingStatus));
+            doNothing().when(ninjaService).saveAllNinjas(anyList());
+            when(missionRepository.save(any(Mission.class))).thenReturn(completedMission);
+            when(missionMapper.entityToDto(completedMission)).thenReturn(new MissionResponse(1L, "Misión de limpieza", null, null, null, Status.COMPLETED, null, null));
+
+            MissionResponse result = missionService.updateMission(missionWithPendingStatus.getId(), request, principal);
+
+            assertThat(result.status()).isEqualTo(Status.COMPLETED);
+            verify(missionRepository).save(missionWithPendingStatus);
+            verify(ninjaService).saveAllNinjas(anyList());
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when non-assigned ninja tries to update a mission")
+        void shouldThrowAccessDeniedWhenNonAssignedNinjaUpdates() {
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(sasuke);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+
+            assertThatThrownBy(() -> missionService.updateMission(missionA.getId(), updateRequest, principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Only the mission status can be updated by a assigned ninja.");
+
+            verify(missionRepository).findById(missionA.getId());
+            verifyNoMoreInteractions(missionRepository);
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when ninja tries to update a field other than status")
+        void shouldThrowAccessDeniedWhenNinjaTriesToUpdateOtherField() {
+            MissionUpdateRequest badRequest = new MissionUpdateRequest("Nuevo Título", null, null, null, null, null);
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(naruto);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+
+            assertThatThrownBy(() -> missionService.updateMission(missionA.getId(), badRequest, principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Only the mission status can be updated by a assigned ninja.");
+
+            verify(missionRepository).findById(missionA.getId());
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceConflictException when Kage updates title to an existing one")
+        void shouldThrowResourceConflictWhenKageUpdatesTitleToExisting() {
+            MissionUpdateRequest badRequest = new MissionUpdateRequest(missionB.getTitle(), null, null, null, null, null);
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+            when(missionRepository.existsByTitle(missionB.getTitle())).thenReturn(true);
+
+            assertThatThrownBy(() -> missionService.updateMission(missionA.getId(), badRequest, principal))
+                    .isInstanceOf(ResourceConflictException.class)
+                    .hasMessageContaining("Mission with this title already exists.");
+
+            verify(missionRepository).findById(missionA.getId());
+            verify(missionRepository).existsByTitle(missionB.getTitle());
         }
     }
 }
