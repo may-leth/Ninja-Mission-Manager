@@ -46,9 +46,6 @@ public class MissionService {
         Ninja authenticatedNinja = ninjaService.getAuthenticatedNinja(principal);
         Mission mission = findMissionById(requestedId);
 
-        boolean isKage = authenticatedNinja.getRoles().stream()
-                .anyMatch(role -> role.equals(Role.ROLE_KAGE));
-
         if (!isKage(authenticatedNinja) && !mission.getAssignedNinjas().contains(authenticatedNinja)) {
             throw new AccessDeniedException("You do not have permission to view this mission.");
         }

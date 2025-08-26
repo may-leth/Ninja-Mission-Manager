@@ -20,9 +20,11 @@ import java.util.Collections;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -391,5 +393,40 @@ public class MissionControllerTest {
                     .andExpect(status().isBadRequest());
         }
     }
-}
 
+    @Nested
+    @DisplayName("DELETE /missions/{id}: Delete a mission")
+    class DeleteMission{
+        @Test
+        @DisplayName("Should create a mission successfully as a kage")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldDeleteMissionSuccessfullyAsKage() throws Exception{
+            mockMvc.perform(delete("/missions/{id}", 7)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(get("/missions/{id}", 7)
+                    .with(user("tsunade@gmail.com").roles("KAGE")))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 403 forbidden when a non-kage user tries to delete a mission")
+        @WithMockUser(username = "naruto@gmail.com", roles = "NINJA_USER")
+        void shouldReturn403ForNonKageUser() throws Exception {
+            mockMvc.perform(delete("/missions/{id}", 7)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("Should return 404 not found when the mission does not exist")
+        @WithMockUser(username = "tsunade@gmail.com", roles = "KAGE")
+        void shouldReturn404ForNonExistentMission() throws Exception{
+            mockMvc.perform(delete("/missions/{id}", 999)
+                    .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("Mission not found with ID: 999")));
+        }
+    }
+}
