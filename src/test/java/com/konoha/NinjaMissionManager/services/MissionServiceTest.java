@@ -236,6 +236,33 @@ public class MissionServiceTest {
         }
 
         @Test
+        @DisplayName("Should create a high-rank mission successfully with a jonin ninja")
+        void shouldCreateHighRankMissionWithJonin(){
+            MissionCreateRequest highRankRequest = new MissionCreateRequest(
+                    "Mision de alto rango",
+                    "Detener a un ninja renegado",
+                    5000,
+                    MissionDifficulty.A,
+                    Set.of(sasuke.getId())
+            );
+            Mission mission = new Mission();
+
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.existsByTitle(anyString())).thenReturn(false);
+            when(ninjaService.getNinjaEntityById(sasuke.getId())).thenReturn(sasuke);
+            when(missionMapper.dtoToEntity(any(MissionCreateRequest.class))).thenReturn(mission);
+            when(missionRepository.save(any(Mission.class))).thenReturn(new Mission());
+            when(missionMapper.entityToDto(any(Mission.class))).thenReturn(new MissionResponse(
+                    1L,"Mision de alto rango","Detener a un ninja renegado",5000, MissionDifficulty.A, Status.PENDING, LocalDateTime.now(), Set.of()));
+
+            missionService.createMission(highRankRequest, principal);
+
+            verify(missionRepository).save(any(Mission.class));
+            verify(missionMapper).entityToDto(any(Mission.class));
+
+        }
+
+        @Test
         @DisplayName("Should throw AccessDeniedException for a non-Kage ninja")
         void shouldThrowAccessDeniedForNonKage() {
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(naruto);
@@ -427,6 +454,52 @@ public class MissionServiceTest {
 
             verify(missionRepository).findById(missionA.getId());
             verify(missionRepository).existsByTitle(missionB.getTitle());
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteMission")
+    class DeleteMissionTests {
+        @Test
+        @DisplayName("Should delete a mission successfully as a kage")
+        void shouldDeleteMissionAsKage(){
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(missionA.getId())).thenReturn(Optional.of(missionA));
+
+            missionService.deleteMission(missionA.getId(), principal);
+
+            verify(ninjaService).getAuthenticatedNinja(principal);
+            verify(missionRepository).findById(missionA.getId());
+            verify(missionRepository).delete(missionA);
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException for a nin-kage ninja")
+        void shouldThrowAccessDeniedForNonKage() {
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(naruto);
+
+            assertThatThrownBy(() -> missionService.deleteMission(missionA.getId(), principal))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Only a Kage can create or manage missions.");
+
+            verify(ninjaService).getAuthenticatedNinja(principal);
+            verify(missionRepository, never()).findById(anyLong());
+            verify(missionRepository, never()).delete(any(Mission.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when mission does not exist")
+        void shouldThrowExceptionWhenMissionNotFound(){
+            when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
+            when(missionRepository.findById(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> missionService.deleteMission(99L, principal))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("Mission not found with ID: 99");
+
+            verify(ninjaService).getAuthenticatedNinja(principal);
+            verify(missionRepository).findById(99L);
+            verify(missionRepository, never()).delete(any(Mission.class));
         }
     }
 }
