@@ -32,6 +32,7 @@ public class NinjaController {
     @Operation(summary = "Obtener todos los ninjas con filtros opcionales")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista de ninjas recuperada exitosamente"),
+            @ApiResponse(responseCode = "403", description = "Acceso denegado, el usuario no es un Kage"),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @GetMapping
