@@ -1,5 +1,7 @@
 package com.konoha.NinjaMissionManager.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,9 +11,11 @@ import java.util.Set;
 @Entity
 @Table(name = "ninjas")
 @Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Ninja {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,7 +34,7 @@ public class Ninja {
     private Rank rank;
 
     @ManyToOne
-    @JoinColumn(name = "village_id", nullable = false)
+    @JoinColumn(name = "village_id")
     private Village village;
 
     @Builder.Default
@@ -45,13 +49,8 @@ public class Ninja {
     @CollectionTable(name = "ninja_roles", joinColumns = @JoinColumn(name = "ninja_id"))
     private Set<Role> roles;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "ninja_missions",
-            joinColumns = @JoinColumn(name = "ninja_id"),
-            inverseJoinColumns = @JoinColumn(name = "mission_id")
-    )
-
+    @JsonBackReference
+    @ManyToMany(mappedBy = "assignedNinjas", fetch = FetchType.EAGER)
     @Builder.Default
     private Set<Mission> assignedMissions = new HashSet<>();
 }

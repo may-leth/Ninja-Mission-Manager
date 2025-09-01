@@ -5,5 +5,9 @@ public enum MissionDifficulty {
     C,
     B,
     A,
-    S
+    S;
+
+    public boolean isHighRank() {
+        return this == A || this == S;
+    }
 }

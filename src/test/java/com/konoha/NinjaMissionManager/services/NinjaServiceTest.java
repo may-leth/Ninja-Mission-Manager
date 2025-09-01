@@ -45,9 +45,6 @@ public class NinjaServiceTest {
     private MissionMapper missionMapper;
 
     @Mock
-    private VillageService villageService;
-
-    @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
     @Mock
@@ -260,81 +257,79 @@ public class NinjaServiceTest {
     }
 
     @Nested
-    @DisplayName("RegisterNewNinja")
-    class RegisterNewNinjaTests {
-        @Test
-        @DisplayName("Should register a new ninja successfully")
-        void shouldRegisterNewNinja(){
-            NinjaRegisterRequest request = new NinjaRegisterRequest(
-                    "Naruto Uzumaki",
-                    "naruto@gmail.com",
-                    "Naruto12345.",
+    @DisplayName("RegisterNewNinjaInternal")
+    class RegisterNewNinjaInternalTests {
+        private NinjaRegisterRequest request;
+        private Village mockVillage;
+
+        @BeforeEach
+        void setUp(){
+            request = new NinjaRegisterRequest(
+                    "Sakura Haruno",
+                    "sakura@gmail.com",
+                    "Sakura12345.",
                     1L
             );
 
-            Village mockVillage = new Village();
-            mockVillage.setId(1L);
-            mockVillage.setName("Konoha");
+            mockVillage = new Village(1L, "Konoha", kage);
+        }
 
-            when(ninjaRepository.existsByEmail("naruto@gmail.com")).thenReturn(false);
-            when(passwordEncoder.encode("Naruto12345.")).thenReturn("encodedPassword");
-            when(villageService.getVillageEntityById(1L)).thenReturn(mockVillage);
+        @Test
+        @DisplayName("Should register a new ninja successfully")
+        void shouldRegisterNewNinjaSuccessfully(){
+            when(ninjaRepository.existsByEmail(request.email())).thenReturn(false);
+            when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
+            when(ninjaRepository.save(any(Ninja.class))).then(returnsFirstArg());
+            when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
 
-            Ninja savedNinja = Ninja.builder()
-                    .id(1L)
-                    .name("Naruto Uzumaki")
-                    .email("naruto@gmail.com")
-                    .password("encodedPassword")
-                    .rank(Rank.GENIN)
-                    .village(mockVillage)
-                    .isAnbu(false)
-                    .roles(Set.of(Role.ROLE_NINJA_USER))
-                    .missionsCompletedCount(0)
-                    .build();
+            NinjaResponse result = ninjaService.registerNewNinjaInternal(request, mockVillage);
 
-            when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
-            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(narutoResponse);
+            assertThat(result).isNotNull().isEqualTo(narutoResponse);
 
-            NinjaResponse result = ninjaService.registerNewNinja(request);
+            var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
+            verify(ninjaRepository).save(ninjaCaptor.capture());
+            Ninja savedNinja = ninjaCaptor.getValue();
 
-            assertThat(result).isEqualTo(narutoResponse);
+            assertThat(savedNinja.getName()).isEqualTo(request.name());
+            assertThat(savedNinja.getEmail()).isEqualTo(request.email());
+            assertThat(savedNinja.getPassword()).isEqualTo("encodedPassword");
+            assertThat(savedNinja.getRank()).isEqualTo(Rank.GENIN);
+            assertThat(savedNinja.getVillage()).isEqualTo(mockVillage);
+            assertThat(savedNinja.isAnbu()).isFalse();
+            assertThat(savedNinja.getRoles()).isEqualTo(Set.of(Role.ROLE_NINJA_USER));
+            assertThat(savedNinja.getMissionsCompletedCount()).isZero();
 
-            verify(ninjaRepository).existsByEmail("naruto@gmail.com");
-            verify(passwordEncoder).encode("Naruto12345.");
-            verify(villageService).getVillageEntityById(1L);
+            verify(ninjaRepository).existsByEmail(request.email());
+            verify(passwordEncoder).encode(request.password());
             verify(ninjaRepository).save(any(Ninja.class));
-            verify(ninjaMapper).entityToDto(savedNinja, missionMapper);
+            verify(ninjaMapper).entityToDto(any(Ninja.class), eq(missionMapper));
         }
 
         @Test
         @DisplayName("Should throw ResourceConflictException when email already exists")
         void shouldThrowWhenEmailExistsRegister() {
-            NinjaRegisterRequest request = new NinjaRegisterRequest(
-                    "Naruto Uzumaki",
-                    "naruto@gmail.com",
-                    "Naruto12345.",
-                    1L
-            );
+            when(ninjaRepository.existsByEmail(request.email())).thenReturn(true);
 
-            when(ninjaRepository.existsByEmail("naruto@gmail.com")).thenReturn(true);
-
-            assertThatThrownBy(() -> ninjaService.registerNewNinja(request))
+            assertThatThrownBy(() -> ninjaService.registerNewNinjaInternal(request, mockVillage))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already registered");
 
-            verify(ninjaRepository).existsByEmail("naruto@gmail.com");
-            verifyNoInteractions(passwordEncoder, villageService, ninjaMapper);
-            verify(ninjaRepository, never()).save(any());
+            verify(ninjaRepository).existsByEmail(request.email());
+            verify(passwordEncoder, never()).encode(anyString());
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+            verifyNoInteractions(ninjaMapper);
         }
     }
 
     @Nested
-    @DisplayName("createNinja")
-    class CreateNinjaTests{
-        @Test
-        @DisplayName("Should create a ninja with given attributes succesfully")
-        void shouldCreateNinja(){
-            KageCreateNinjaRequest request = new KageCreateNinjaRequest(
+    @DisplayName("createNinjaInternal")
+    class CreateNinjaInternalTests{
+        private KageCreateNinjaRequest request;
+        private Village mockVillage;
+
+        @BeforeEach
+        void setUp() {
+            request = new KageCreateNinjaRequest(
                     "Itachi Uchiha",
                     "itachi@gmail.com",
                     "Itachi12345.",
@@ -345,61 +340,52 @@ public class NinjaServiceTest {
             );
 
             Village mockVillage = new Village();
-            mockVillage.setId(1L);
-            mockVillage.setName("Konoha");
+        }
 
-            when(ninjaRepository.existsByEmail("itachi@gmail.com")).thenReturn(false);
-            when(passwordEncoder.encode("Itachi12345.")).thenReturn("encodedPassword");
-            when(villageService.getVillageEntityById(1L)).thenReturn(mockVillage);
+        @Test
+        @DisplayName("Should create a ninja successfully when all attributes are valid")
+        void shouldCreateNinjaSuccessfully(){
+            when(ninjaRepository.existsByEmail(request.email())).thenReturn(false);
+            when(passwordEncoder.encode(request.password())).thenReturn("encodedPassword");
+            when(ninjaRepository.save(any(Ninja.class))).then(returnsFirstArg());
+            when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(sasukeResponse);
 
-            Ninja savedNinja = Ninja.builder()
-                    .id(2L)
-                    .name("Itachi Uchiha")
-                    .email("itachi@leaf.com")
-                    .password("encodedSharingan")
-                    .rank(Rank.JONIN)
-                    .village(mockVillage)
-                    .isAnbu(true)
-                    .roles(Set.of(Role.ROLE_NINJA_USER, Role.ROLE_KAGE))
-                    .missionsCompletedCount(0)
-                    .build();
+            NinjaResponse result = ninjaService.createNinjaInternal(request, mockVillage);
 
-            when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
-            when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(sasukeResponse);
+            assertThat(result).isNotNull().isEqualTo(sasukeResponse);
 
-            NinjaResponse result = ninjaService.createNinja(request);
+            var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
+            verify(ninjaRepository).save(ninjaCaptor.capture());
+            Ninja savedNinja = ninjaCaptor.getValue();
 
-            assertThat(result).isEqualTo(sasukeResponse);
+            assertThat(savedNinja.getName()).isEqualTo(request.name());
+            assertThat(savedNinja.getEmail()).isEqualTo(request.email());
+            assertThat(savedNinja.getPassword()).isEqualTo("encodedPassword");
+            assertThat(savedNinja.getRank()).isEqualTo(request.rank());
+            assertThat(savedNinja.getVillage()).isEqualTo(mockVillage);
+            assertThat(savedNinja.isAnbu()).isEqualTo(request.isAnbu());
+            assertThat(savedNinja.getRoles()).isEqualTo(request.roles());
+            assertThat(savedNinja.getMissionsCompletedCount()).isZero();
 
-            verify(ninjaRepository).existsByEmail("itachi@gmail.com");
-            verify(passwordEncoder).encode("Itachi12345.");
-            verify(villageService).getVillageEntityById(1L);
+            verify(ninjaRepository).existsByEmail(request.email());
+            verify(passwordEncoder).encode(request.password());
             verify(ninjaRepository).save(any(Ninja.class));
-            verify(ninjaMapper).entityToDto(savedNinja, missionMapper);
+            verify(ninjaMapper).entityToDto(any(Ninja.class), eq(missionMapper));
         }
 
         @Test
         @DisplayName("Should throw ResourceConflictException when email already exists")
-        void shouldThrowWhenEmailExistsCreate() {
-            KageCreateNinjaRequest request = new KageCreateNinjaRequest(
-                    "Itachi Uchiha",
-                    "itachi@gmail.com",
-                    "Itachi12345.",
-                    Rank.JONIN,
-                    1L,
-                    true,
-                    Set.of(Role.ROLE_NINJA_USER, Role.ROLE_KAGE)
-            );
+        void shouldThrowExceptionWhenEmailExistsCreate() {
+            when(ninjaRepository.existsByEmail(request.email())).thenReturn(true);
 
-            when(ninjaRepository.existsByEmail("itachi@gmail.com")).thenReturn(true);
-
-            assertThatThrownBy(() -> ninjaService.createNinja(request))
+            assertThatThrownBy(() -> ninjaService.createNinjaInternal(request, mockVillage))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already registered");
 
-            verify(ninjaRepository).existsByEmail("itachi@gmail.com");
-            verifyNoInteractions(passwordEncoder, villageService, ninjaMapper);
-            verify(ninjaRepository, never()).save(any());
+            verify(ninjaRepository).existsByEmail(request.email());
+            verify(passwordEncoder, never()).encode(anyString());
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+            verifyNoInteractions(ninjaMapper);
         }
     }
 
@@ -487,7 +473,7 @@ public class NinjaServiceTest {
     }
 
     @Nested
-    @DisplayName("updateAsKage")
+    @DisplayName("updateAsKageInternal")
     class UpdateAsKageTests {
         private NinjaKageUpdateRequest updateRequest;
         private Village newVillage;
@@ -497,28 +483,25 @@ public class NinjaServiceTest {
             updateRequest = new NinjaKageUpdateRequest(
                     "Naruto Hokage",
                     "naruto@gmail.com",
-                    Rank.CHUNIN,
+                    Rank.KAGE,
                     1L,
                     true,
                     Set.of(Role.ROLE_KAGE)
             );
-            newVillage = new Village(1L, "New Konoha", null);
+            newVillage = new Village(1L, "New Konoha", kage);
         }
 
         @Test
-        @DisplayName("Should update ninja when user is a Kage")
-        void shouldUpdateNinjaWhenUserIsKage() {
-            when(principal.getName()).thenReturn(kage.getEmail());
-            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
+        @DisplayName("Should update ninja successfully when all attributes are valid")
+        void shouldUpdateNinjaSuccessfullyWhenAllAttributesAreValid() {
             when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
             when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(false);
-            when(villageService.getVillageEntityById(updateRequest.villageId())).thenReturn(newVillage);
-            when(ninjaRepository.save(any(Ninja.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(ninjaRepository.save(any(Ninja.class))).then(returnsFirstArg());
             when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
 
-            NinjaResponse result = ninjaService.updateAsKage(naruto.getId(), updateRequest, principal);
+            NinjaResponse result = ninjaService.updateAsKageInternal(naruto.getId(), updateRequest, newVillage);
 
-            assertThat(result).isEqualTo(narutoResponse);
+            assertThat(result).isNotNull().isEqualTo(narutoResponse);
 
             var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
             verify(ninjaRepository).save(ninjaCaptor.capture());
@@ -533,67 +516,59 @@ public class NinjaServiceTest {
         }
 
         @Test
-        @DisplayName("Should update ninja without changing village when villageId is null")
-        void shouldUpdateWithoutVillageWhenIdIsNull() {
-            NinjaKageUpdateRequest requestWithoutVillage = new NinjaKageUpdateRequest(
-                    "Name",
-                    "email@email.com",
-                    Rank.JONIN,
-                    null,
-                    false,
-                    Set.of()
+        @DisplayName("Should update ninja successfully when email is the same")
+        void shouldUpdateNinjaSuccessfullyWhenEmailIsTheSame() {
+            NinjaKageUpdateRequest requestWithSameEmail = new NinjaKageUpdateRequest(
+                    "Naruto Updated",
+                    naruto.getEmail(),
+                    Rank.KAGE,
+                    1L,
+                    true,
+                    Set.of(Role.ROLE_KAGE)
             );
 
-            when(principal.getName()).thenReturn(kage.getEmail());
-            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
             when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
-            when(ninjaRepository.existsByEmail(requestWithoutVillage.email())).thenReturn(false);
-            when(ninjaRepository.save(any(Ninja.class))).thenReturn(naruto);
-            when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
+            when(ninjaRepository.save(any(Ninja.class))).then(returnsFirstArg());
+            when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
 
-            ninjaService.updateAsKage(naruto.getId(), requestWithoutVillage, principal);
+            NinjaResponse result = ninjaService.updateAsKageInternal(naruto.getId(), requestWithSameEmail, newVillage);
 
-            verify(villageService, never()).getVillageEntityById(any());
-        }
+            var ninjaCaptor = ArgumentCaptor.forClass(Ninja.class);
+            verify(ninjaRepository).save(ninjaCaptor.capture());
+            Ninja savedNinja = ninjaCaptor.getValue();
 
-
-        @Test
-        @DisplayName("Should throw AccessDeniedException when user is not a Kage")
-        void shouldThrowAccessDeniedWhenNotKage() {
-            when(principal.getName()).thenReturn(naruto.getEmail());
-            when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
-
-            assertThatThrownBy(() -> ninjaService.updateAsKage(sasuke.getId(), updateRequest, principal))
-                    .isInstanceOf(AccessDeniedException.class)
-                    .hasMessageContaining("You are not authorized to perform this operation.");
-
-            verify(ninjaRepository, never()).findById(anyLong());
-            verify(ninjaRepository, never()).save(any(Ninja.class));
+            assertThat(savedNinja.getEmail()).isEqualTo(requestWithSameEmail.email());
+            verify(ninjaRepository, never()).existsByEmail(anyString());
         }
 
         @Test
         @DisplayName("Should throw ResourceNotFoundException when ninja to update does not exist")
         void shouldThrowNotFoundWhenNinjaDoesNotExist() {
-            when(principal.getName()).thenReturn(kage.getEmail());
-            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
             when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> ninjaService.updateAsKage(99L, updateRequest, principal))
+            assertThatThrownBy(() -> ninjaService.updateAsKageInternal(99L, updateRequest, newVillage))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Ninja not found with ID: 99");
+
+            verify(ninjaRepository).findById(99L);
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+            verifyNoMoreInteractions(ninjaRepository, ninjaMapper);
         }
 
         @Test
         @DisplayName("Should throw ResourceConflictException when new email is already taken")
         void shouldThrowConflictWhenEmailIsTaken() {
-            when(principal.getName()).thenReturn(kage.getEmail());
-            when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
             when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
             when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(true);
 
-            assertThatThrownBy(() -> ninjaService.updateAsKage(naruto.getId(), updateRequest, principal))
+            assertThatThrownBy(() -> ninjaService.updateAsKageInternal(naruto.getId(), updateRequest, newVillage))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already taken");
+
+            verify(ninjaRepository).findById(naruto.getId());
+            verify(ninjaRepository).existsByEmail(updateRequest.email());
+            verify(ninjaRepository, never()).save(any(Ninja.class));
+            verifyNoMoreInteractions(ninjaRepository, ninjaMapper);
         }
     }
 
