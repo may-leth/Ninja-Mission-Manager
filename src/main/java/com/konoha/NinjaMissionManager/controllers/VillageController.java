@@ -5,6 +5,7 @@ import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
 import com.konoha.NinjaMissionManager.dtos.village.VillageUpdateRequest;
 import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.services.NinjaService;
+import com.konoha.NinjaMissionManager.services.NinjaVillageCoordinatorService;
 import com.konoha.NinjaMissionManager.services.VillageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +28,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Tag(name = "Villages", description = "Endpoints para la gestión de Aldeas")
 public class VillageController {
+    private final NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
     private final VillageService villageService;
 
     @Operation(summary = "Obtener todas las aldeas")
@@ -67,10 +70,7 @@ public class VillageController {
     @PostMapping
     public ResponseEntity<VillageResponse> createVillage(
             @Valid @RequestBody VillageRequest villageRequest) {
-//        COMENTAR CON CRIS LÓGICA Y DEPENDENCIA CIRCULAR x.x
-//        Ninja kage = ninjaService.getNinjaEntityById(villageRequest.kageId());
-//        VillageResponse response = villageService.createVillage(villageRequest, kage);
-        VillageResponse response = villageService.createVillage(villageRequest);
+        VillageResponse response = ninjaVillageCoordinatorService.createVillage(villageRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -88,7 +88,7 @@ public class VillageController {
             @Parameter(description = "ID de la aldea a actualizar")
             @PathVariable Long id,
             @Valid @RequestBody VillageUpdateRequest villageUpdateRequest) {
-        VillageResponse response = villageService.updateVillage(id, villageUpdateRequest);
+        VillageResponse response = ninjaVillageCoordinatorService.updateVillage(id, villageUpdateRequest);
         return ResponseEntity.ok(response);
     }
 
@@ -103,7 +103,7 @@ public class VillageController {
     public ResponseEntity<Void> deleteVillage(
             @Parameter(description = "ID de la aldea a eliminar")
             @PathVariable Long id) {
-        villageService.deleteVillage(id);
+        ninjaVillageCoordinatorService.deleteVillage(id);
         return ResponseEntity.noContent().build();
     }
 }
