@@ -4,6 +4,7 @@ import com.konoha.NinjaMissionManager.dtos.ninja.*;
 import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.security.jwt.JwtService;
 import com.konoha.NinjaMissionManager.services.NinjaService;
+import com.konoha.NinjaMissionManager.services.NinjaVillageCoordinatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,18 +22,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final NinjaService ninjaService;
     private final AuthenticationManager authenticationManager;
+    private final NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
     private final JwtService jwtService;
 
     @PostMapping("/register")
     public ResponseEntity<NinjaResponse> register(@RequestBody @Valid NinjaRegisterRequest ninjaRequest){
-        NinjaResponse response = ninjaService.registerNewNinja(ninjaRequest);
+        NinjaResponse response = ninjaVillageCoordinatorService.registerNewNinja(ninjaRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PreAuthorize("hasRole('KAGE')")
     @PostMapping("/register/kage")
     public ResponseEntity<NinjaResponse> kageRegister(@RequestBody @Valid KageCreateNinjaRequest ninjaRequest){
-        NinjaResponse response = ninjaService.createNinja(ninjaRequest);
+        NinjaResponse response = ninjaVillageCoordinatorService.createNinja(ninjaRequest);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

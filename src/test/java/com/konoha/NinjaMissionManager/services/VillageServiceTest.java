@@ -40,9 +40,6 @@ public class VillageServiceTest {
     @Mock
     private VillageMapper villageMapper;
 
-    @Mock
-    private NinjaService ninjaService;
-
     @InjectMocks
     private VillageService villageService;
 
@@ -143,276 +140,59 @@ public class VillageServiceTest {
     }
 
     @Nested
-    @DisplayName("createVillage")
-    class CreateVillageTest {
+    @DisplayName("createVillageInternal")
+    class CreateVillageInternalTest {
         @Test
-        @DisplayName("Should create a new village successfully")
-        void shouldCreateVillageSuccessfully(){
-            when(ninjaService.getNinjaEntityById(konohaRequest.kageId())).thenReturn(naruto);
-            when(villageRepository.existsByNameIgnoreCase(konohaRequest.name())).thenReturn(false);
-            when(villageRepository.existsByKageId(naruto.getId())).thenReturn(false);
+        @DisplayName("Should create and save a new village successfully")
+        void shouldCreateAndSaveVillageSuccessfully() {
             when(villageMapper.dtoToEntity(konohaRequest, naruto)).thenReturn(konoha);
             when(villageRepository.save(konoha)).thenReturn(konoha);
             when(villageMapper.entityToDto(konoha)).thenReturn(konohaResponse);
 
-            VillageResponse result = villageService.createVillage(konohaRequest);
+            VillageResponse result = villageService.createVillageInternal(konohaRequest, naruto);
 
             assertThat(result).isNotNull();
-            assertThat(result.name()).isEqualTo(konohaRequest.name());
+            assertThat(result.name()).isEqualTo("Konoha");
 
-            verify(ninjaService).getNinjaEntityById(konohaRequest.kageId());
-            verify(villageRepository).existsByNameIgnoreCase(konohaRequest.name());
-            verify(villageRepository).existsByKageId(naruto.getId());
-            verify(villageRepository).save(konoha);
             verify(villageMapper).dtoToEntity(konohaRequest, naruto);
+            verify(villageRepository).save(konoha);
             verify(villageMapper).entityToDto(konoha);
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceConflictException when village name already exists")
-        void shouldThrowExceptionWhenVillageNameExists() {
-            when(ninjaService.getNinjaEntityById(konohaRequest.kageId())).thenThrow(new ResourceNotFoundException("Ninja not found"));
-
-            assertThatThrownBy(() -> villageService.createVillage(konohaRequest))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Ninja not found");
-
-            verify(ninjaService).getNinjaEntityById(konohaRequest.kageId());
-            verify(villageRepository, never()).existsByNameIgnoreCase(any());
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceConflictException when Kage is already leading a village")
-        void shouldThrowExceptionWhenKageAlreadyHasAVillage() {
-            when(ninjaService.getNinjaEntityById(konohaRequest.kageId())).thenReturn(naruto);
-            when(villageRepository.existsByNameIgnoreCase(konohaRequest.name())).thenReturn(false);
-            when(villageRepository.existsByKageId(naruto.getId())).thenReturn(true);
-
-            assertThatThrownBy(() -> villageService.createVillage(konohaRequest))
-                    .isInstanceOf(ResourceConflictException.class)
-                    .hasMessageContaining("is already the Kage of another village.");
-
-            verify(ninjaService).getNinjaEntityById(konohaRequest.kageId());
-            verify(villageRepository).existsByNameIgnoreCase(konohaRequest.name());
-            verify(villageRepository).existsByKageId(naruto.getId());
-            verify(villageRepository, never()).save(any(Village.class));
+            verifyNoMoreInteractions(villageMapper, villageRepository);
         }
     }
 
     @Nested
-    @DisplayName("updateVillage")
-    class UpdateVillageTest {
-        private VillageUpdateRequest updateNameRequest;
-        private VillageUpdateRequest updateKageRequest;
-        private VillageUpdateRequest updateBothRequest;
-
-        @BeforeEach
-        void setup() {
-            updateNameRequest = new VillageUpdateRequest("Shinobi", null);
-            updateKageRequest = new VillageUpdateRequest(null, 2L);
-            updateBothRequest = new VillageUpdateRequest("Shinobi", 2L);
-        }
-
+    @DisplayName("UpdateVillageIternalTest")
+    class UpdateVillageInternalTest{
         @Test
-        @DisplayName("Should update village successfully when name and kage are updated")
-        void shouldUpdateVillageWhenNameAndKageAreUpdated() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(villageRepository.existsByNameIgnoreCase(updateBothRequest.name())).thenReturn(false);
-            when(ninjaService.getNinjaEntityById(updateBothRequest.kageId())).thenReturn(raikage);
-            when(villageRepository.existsByKageAndIdNot(raikage, 1L)).thenReturn(false);
-            when(villageRepository.save(any(Village.class))).thenReturn(konoha);
-            when(villageMapper.entityToDto(any(Village.class))).thenReturn(konohaResponse);
-
-            VillageResponse result = villageService.updateVillage(1L, updateBothRequest);
-
-            assertThat(result).isNotNull();
-            verify(villageRepository).findById(1L);
-            verify(villageRepository).existsByNameIgnoreCase(updateBothRequest.name());
-            verify(ninjaService).getNinjaEntityById(updateBothRequest.kageId());
-            verify(villageRepository).existsByKageAndIdNot(raikage, 1L);
-            verify(villageRepository).save(any(Village.class));
-            verify(villageMapper).entityToDto(any(Village.class));
-        }
-
-        @Test
-        @DisplayName("Should update village successfully when only name is updated")
-        void shouldUpdateVillageWhenOnlyNameIsUpdated() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(villageRepository.existsByNameIgnoreCase(updateNameRequest.name())).thenReturn(false);
-            when(villageRepository.save(any(Village.class))).thenReturn(konoha);
-            when(villageMapper.entityToDto(any(Village.class))).thenReturn(konohaResponse);
-
-            VillageResponse result = villageService.updateVillage(1L, updateNameRequest);
-
-            assertThat(result).isNotNull();
-            verify(villageRepository).findById(1L);
-            verify(villageRepository).existsByNameIgnoreCase(updateNameRequest.name());
-            verify(villageRepository).save(any(Village.class));
-            verifyNoInteractions(ninjaService);
-            verify(villageRepository, never()).existsByKageAndIdNot(any(), anyLong());
-        }
-
-        @Test
-        @DisplayName("Should update village successfully when only kage is updated")
-        void shouldUpdateVillageWhenOnlyKageIsUpdated() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(ninjaService.getNinjaEntityById(updateKageRequest.kageId())).thenReturn(raikage);
-            when(villageRepository.existsByKageAndIdNot(raikage, 1L)).thenReturn(false);
-            when(villageRepository.save(any(Village.class))).thenReturn(konoha);
-            when(villageMapper.entityToDto(any(Village.class))).thenReturn(konohaResponse);
-
-            VillageResponse result = villageService.updateVillage(1L, updateKageRequest);
-
-            assertThat(result).isNotNull();
-            verify(villageRepository).findById(1L);
-            verify(ninjaService).getNinjaEntityById(updateKageRequest.kageId());
-            verify(villageRepository).existsByKageAndIdNot(raikage, 1L);
-            verify(villageRepository).save(any(Village.class));
-            verify(villageMapper).entityToDto(any(Village.class));
-            verify(villageRepository, never()).existsByNameIgnoreCase(any());
-        }
-
-        @Test
-        @DisplayName("Should not update village when no fields are provided")
-        void shouldNotUpdateVillageWhenNoFieldsProvided() {
-            VillageUpdateRequest emptyRequest = new VillageUpdateRequest(null, null);
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
+        @DisplayName("Should update and save a village successfully")
+        void shouldUpdateAndSaveVillageSuccessfully(){
             when(villageRepository.save(konoha)).thenReturn(konoha);
             when(villageMapper.entityToDto(konoha)).thenReturn(konohaResponse);
 
-            VillageResponse result = villageService.updateVillage(1L, emptyRequest);
+            VillageResponse result = villageService.updateVillageInternal(konoha);
 
             assertThat(result).isNotNull();
-            verify(villageRepository).findById(1L);
+            assertThat(result.id()).isEqualTo(1L);
+
             verify(villageRepository).save(konoha);
             verify(villageMapper).entityToDto(konoha);
-            verifyNoMoreInteractions(villageRepository, ninjaService);
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when village to update does not exist")
-        void shouldThrowNotFoundExceptionWhenVillageDoesNotExist() {
-            when(villageRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> villageService.updateVillage(99L, updateBothRequest))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Village not found with ID: 99");
-
-            verify(villageRepository).findById(99L);
-            verify(villageRepository, never()).save(any(Village.class));
-            verifyNoInteractions(ninjaService, villageMapper);
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceConflictException when updated name already exists")
-        void shouldThrowConflictWhenUpdatedNameExists() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(villageRepository.existsByNameIgnoreCase(updateNameRequest.name())).thenReturn(true);
-
-            assertThatThrownBy(() -> villageService.updateVillage(1L, updateNameRequest))
-                    .isInstanceOf(ResourceConflictException.class)
-                    .hasMessageContaining("Village with this name already exists");
-
-            verify(villageRepository).findById(1L);
-            verify(villageRepository).existsByNameIgnoreCase(updateNameRequest.name());
-            verify(villageRepository, never()).save(any(Village.class));
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceNotFoundException when new kage does not exist")
-        void shouldThrowNotFoundExceptionWhenNewKageDoesNotExist() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(ninjaService.getNinjaEntityById(updateKageRequest.kageId())).thenThrow(new ResourceNotFoundException("Ninja not found"));
-
-            assertThatThrownBy(() -> villageService.updateVillage(1L, updateKageRequest))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Ninja not found");
-
-            verify(villageRepository).findById(1L);
-            verify(ninjaService).getNinjaEntityById(updateKageRequest.kageId());
-            verify(villageRepository, never()).save(any(Village.class));
-        }
-
-        @Test
-        @DisplayName("Should throw ResourceConflictException when new kage is already leading another village")
-        void shouldThrowConflictWhenNewKageAlreadyLeadsAnotherVillage() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(konoha));
-            when(ninjaService.getNinjaEntityById(updateKageRequest.kageId())).thenReturn(raikage);
-            when(villageRepository.existsByKageAndIdNot(raikage, 1L)).thenReturn(true);
-
-            assertThatThrownBy(() -> villageService.updateVillage(1L, updateKageRequest))
-                    .isInstanceOf(ResourceConflictException.class)
-                    .hasMessageContaining("is already the Kage of another village.");
-
-            verify(villageRepository).findById(1L);
-            verify(ninjaService).getNinjaEntityById(updateKageRequest.kageId());
-            verify(villageRepository).existsByKageAndIdNot(raikage, 1L);
-            verify(villageRepository, never()).save(any(Village.class));
+            verifyNoMoreInteractions(villageRepository, villageMapper);
         }
     }
 
     @Nested
-    @DisplayName("deleteVillage")
-    class DeleteVillageTest {
-        private Village villageToDelete;
-        private Ninja ninja1;
-        private Ninja ninja2;
-
-        @BeforeEach
-        void setup() {
-            ninja1 = new Ninja(2L, "Ninja Test 1", "test1@konoha.com", "password", Rank.GENIN, null, 0, false, new HashSet<>(), new HashSet<>());
-            ninja2 = new Ninja(3L, "Ninja Test 2", "test2@konoha.com", "password", Rank.CHUNIN, null, 0, false, new HashSet<>(), new HashSet<>());
-
-            villageToDelete = new Village(1L, "Konoha", ninja1);
-
-            ninja1.setVillage(villageToDelete);
-            ninja2.setVillage(villageToDelete);
-        }
-
+    @DisplayName("DeleteVillageInternal")
+    class DeleteVillageInternalTest {
         @Test
-        @DisplayName("Should delete a village successfully when it has ninjas")
-        void shouldDeleteVillageWithNinjasSuccessfully() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(villageToDelete));
-            when(ninjaService.getNinjasByVillageId(1L)).thenReturn(List.of(ninja1, ninja2));
-            doNothing().when(ninjaService).saveAllNinjas(anyList());
-            doNothing().when(villageRepository).delete(villageToDelete);
+        @DisplayName("Should delete a village successfully")
+        void  shouldDeleteVillageSuccessfully(){
+            doNothing().when(villageRepository).delete(konoha);
 
-            villageService.deleteVillage(1L);
+            villageService.deleteVillageInternal(konoha);
 
-            verify(villageRepository).findById(1L);
-            verify(ninjaService).getNinjasByVillageId(1L);
-            verify(ninjaService).saveAllNinjas(anyList());
-            verify(villageRepository).delete(villageToDelete);
-        }
-
-        @Test
-        @DisplayName("should delete a village successfully when it has no ninjas")
-        void shouldDeleteVillageWithNoNinjasSuccessfully() {
-            when(villageRepository.findById(1L)).thenReturn(Optional.of(villageToDelete));
-            when(ninjaService.getNinjasByVillageId(1L)).thenReturn(Collections.emptyList());
-            doNothing().when(villageRepository).delete(villageToDelete);
-
-            villageService.deleteVillage(1L);
-
-            verify(villageRepository).findById(1L);
-            verify(ninjaService).getNinjasByVillageId(1L);
-            verify(ninjaService).saveAllNinjas(anyList());
-            verify(villageRepository).delete(villageToDelete);
-        }
-
-        @Test
-        @DisplayName("should throw ResourceNotFoundException when village to delete does not exist")
-        void shouldThrowExceptionWhenVillageToDeleteDoesNotExist() {
-            when(villageRepository.findById(99L)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> villageService.deleteVillage(99L))
-                    .isInstanceOf(ResourceNotFoundException.class)
-                    .hasMessageContaining("Village not found with ID: 99");
-
-            verify(villageRepository).findById(99L);
-            verify(ninjaService, never()).getNinjasByVillageId(anyLong());
-            verify(ninjaService, never()).saveAllNinjas(anyList());
-            verify(villageRepository, never()).delete(any(Village.class));
+            verify(villageRepository, times(1)).delete(konoha);
+            verifyNoMoreInteractions(villageRepository);
         }
     }
 }

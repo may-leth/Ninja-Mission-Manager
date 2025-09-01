@@ -4,10 +4,7 @@ import com.konoha.NinjaMissionManager.dtos.mission.MissionMapper;
 import com.konoha.NinjaMissionManager.dtos.ninja.*;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
-import com.konoha.NinjaMissionManager.models.Mission;
-import com.konoha.NinjaMissionManager.models.Ninja;
-import com.konoha.NinjaMissionManager.models.Rank;
-import com.konoha.NinjaMissionManager.models.Role;
+import com.konoha.NinjaMissionManager.models.*;
 import com.konoha.NinjaMissionManager.repositories.NinjaRepository;
 import com.konoha.NinjaMissionManager.security.NinjaUserDetail;
 import com.konoha.NinjaMissionManager.specifications.NinjaSpecificationBuilder;
@@ -33,7 +30,6 @@ public class NinjaService implements UserDetailsService {
     private final NinjaMapper ninjaMapper;
     private final MissionMapper missionMapper;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final VillageService villageService;
 
     public List<NinjaResponse> getAllNinjas(Optional<Rank> rank, Optional<Long> villageId, Optional<Boolean> isAnbu, Principal principal){
         Ninja authenticatedNinja = getAuthenticatedNinja(principal);
@@ -69,7 +65,7 @@ public class NinjaService implements UserDetailsService {
     }
 
     @Transactional
-    public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
+    public NinjaResponse registerNewNinjaInternal(NinjaRegisterRequest request, Village village){
         validateEmailNotTaken(request.email());
 
         Ninja ninjaToSave = Ninja.builder()
@@ -77,7 +73,7 @@ public class NinjaService implements UserDetailsService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .rank(Rank.GENIN)
-                .village(villageService.getVillageEntityById(request.villageId()))
+                .village(village)
                 .isAnbu(false)
                 .roles(Set.of(Role.ROLE_NINJA_USER))
                 .missionsCompletedCount(0)
@@ -87,7 +83,7 @@ public class NinjaService implements UserDetailsService {
     }
 
     @Transactional
-    public NinjaResponse createNinja(KageCreateNinjaRequest request){
+    public NinjaResponse createNinjaInternal(KageCreateNinjaRequest request, Village village){
         validateEmailNotTaken(request.email());
 
         Ninja ninjaToSave = Ninja.builder()
@@ -95,7 +91,7 @@ public class NinjaService implements UserDetailsService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .rank(request.rank())
-                .village(villageService.getVillageEntityById(request.villageId()))
+                .village(village)
                 .isAnbu(request.isAnbu())
                 .roles(request.roles())
                 .missionsCompletedCount(0)
@@ -120,10 +116,7 @@ public class NinjaService implements UserDetailsService {
     }
 
     @Transactional
-    public NinjaResponse updateAsKage(Long requestedId, NinjaKageUpdateRequest request, Principal principal) {
-        Ninja authenticatedNinja = getAuthenticatedNinja(principal);
-        validateKageAccess(authenticatedNinja);
-
+    public NinjaResponse updateAsKageInternal(Long requestedId, NinjaKageUpdateRequest request, Village village) {
         Ninja ninjaToUpdate = findNinjaById(requestedId);
         validateEmailChange(request.email(), ninjaToUpdate.getEmail());
 
@@ -131,9 +124,7 @@ public class NinjaService implements UserDetailsService {
         ninjaToUpdate.setEmail(request.email());
         ninjaToUpdate.setRank(request.rank());
         ninjaToUpdate.setAnbu(request.isAnbu());
-        if (request.villageId() != null) {
-            ninjaToUpdate.setVillage(villageService.getVillageEntityById(request.villageId()));
-        }
+        ninjaToUpdate.setVillage(village);
         ninjaToUpdate.setRoles(request.roles());
 
         return persistAndMapNinja(ninjaToUpdate);
@@ -176,7 +167,7 @@ public class NinjaService implements UserDetailsService {
                 .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with ID: " + id));
     }
 
-    private void validateKageAccess(Ninja ninja) {
+    public void validateKageAccess(Ninja ninja) {
         boolean isKage = ninja.getRoles().stream().anyMatch(role -> role.equals(Role.ROLE_KAGE));
         if (!isKage) {
             throw new AccessDeniedException("You are not authorized to perform this operation.");
@@ -197,13 +188,13 @@ public class NinjaService implements UserDetailsService {
         }
     }
 
-    private void validateEmailNotTaken(String email) {
+    public void validateEmailNotTaken(String email) {
         if (ninjaRepository.existsByEmail(email)) {
             throw new ResourceConflictException("Email is already registered: " + email);
         }
     }
 
-    private void validateEmailChange(String newEmail, String currentEmail) {
+    public void validateEmailChange(String newEmail, String currentEmail) {
         if (!newEmail.equals(currentEmail) && ninjaRepository.existsByEmail(newEmail)) {
             throw new ResourceConflictException("Email is already taken");
         }

@@ -48,6 +48,9 @@ public class NinjaServiceTest {
     private VillageService villageService;
 
     @Mock
+    private NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
+
+    @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
     @Mock
@@ -295,7 +298,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
             when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(narutoResponse);
 
-            NinjaResponse result = ninjaService.registerNewNinja(request);
+            NinjaResponse result = ninjaVillageCoordinatorService.registerNewNinja(request);
 
             assertThat(result).isEqualTo(narutoResponse);
 
@@ -318,7 +321,7 @@ public class NinjaServiceTest {
 
             when(ninjaRepository.existsByEmail("naruto@gmail.com")).thenReturn(true);
 
-            assertThatThrownBy(() -> ninjaService.registerNewNinja(request))
+            assertThatThrownBy(() -> ninjaVillageCoordinatorService.registerNewNinja(request))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already registered");
 
@@ -367,7 +370,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.save(any(Ninja.class))).thenReturn(savedNinja);
             when(ninjaMapper.entityToDto(savedNinja, missionMapper)).thenReturn(sasukeResponse);
 
-            NinjaResponse result = ninjaService.createNinja(request);
+            NinjaResponse result = ninjaVillageCoordinatorService.createNinja(request);
 
             assertThat(result).isEqualTo(sasukeResponse);
 
@@ -393,7 +396,7 @@ public class NinjaServiceTest {
 
             when(ninjaRepository.existsByEmail("itachi@gmail.com")).thenReturn(true);
 
-            assertThatThrownBy(() -> ninjaService.createNinja(request))
+            assertThatThrownBy(() -> ninjaVillageCoordinatorService.createNinja(request))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already registered");
 
@@ -516,7 +519,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.save(any(Ninja.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(ninjaMapper.entityToDto(any(Ninja.class), eq(missionMapper))).thenReturn(narutoResponse);
 
-            NinjaResponse result = ninjaService.updateAsKage(naruto.getId(), updateRequest, principal);
+            NinjaResponse result = ninjaVillageCoordinatorService.updateAsKage(naruto.getId(), updateRequest, principal);
 
             assertThat(result).isEqualTo(narutoResponse);
 
@@ -551,7 +554,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.save(any(Ninja.class))).thenReturn(naruto);
             when(ninjaMapper.entityToDto(naruto, missionMapper)).thenReturn(narutoResponse);
 
-            ninjaService.updateAsKage(naruto.getId(), requestWithoutVillage, principal);
+            ninjaVillageCoordinatorService.updateAsKage(naruto.getId(), requestWithoutVillage, principal);
 
             verify(villageService, never()).getVillageEntityById(any());
         }
@@ -563,7 +566,7 @@ public class NinjaServiceTest {
             when(principal.getName()).thenReturn(naruto.getEmail());
             when(ninjaRepository.findByEmail(naruto.getEmail())).thenReturn(Optional.of(naruto));
 
-            assertThatThrownBy(() -> ninjaService.updateAsKage(sasuke.getId(), updateRequest, principal))
+            assertThatThrownBy(() -> ninjaVillageCoordinatorService.updateAsKage(sasuke.getId(), updateRequest, principal))
                     .isInstanceOf(AccessDeniedException.class)
                     .hasMessageContaining("You are not authorized to perform this operation.");
 
@@ -578,7 +581,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.findByEmail(kage.getEmail())).thenReturn(Optional.of(kage));
             when(ninjaRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> ninjaService.updateAsKage(99L, updateRequest, principal))
+            assertThatThrownBy(() -> ninjaVillageCoordinatorService.updateAsKage(99L, updateRequest, principal))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Ninja not found with ID: 99");
         }
@@ -591,7 +594,7 @@ public class NinjaServiceTest {
             when(ninjaRepository.findById(naruto.getId())).thenReturn(Optional.of(naruto));
             when(ninjaRepository.existsByEmail(updateRequest.email())).thenReturn(true);
 
-            assertThatThrownBy(() -> ninjaService.updateAsKage(naruto.getId(), updateRequest, principal))
+            assertThatThrownBy(() -> ninjaVillageCoordinatorService.updateAsKage(naruto.getId(), updateRequest, principal))
                     .isInstanceOf(ResourceConflictException.class)
                     .hasMessageContaining("Email is already taken");
         }

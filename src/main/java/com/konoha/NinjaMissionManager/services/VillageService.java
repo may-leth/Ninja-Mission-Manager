@@ -10,6 +10,7 @@ import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Village;
 import com.konoha.NinjaMissionManager.repositories.VillageRepository;
 import com.konoha.NinjaMissionManager.specifications.VillageSpecificationBuilder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -20,16 +21,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class VillageService {
     private final VillageRepository villageRepository;
     private final VillageMapper villageMapper;
-    private final NinjaService ninjaService;
-
-    public VillageService(VillageRepository villageRepository, VillageMapper villageMapper, @Lazy NinjaService ninjaService) {
-        this.villageRepository = villageRepository;
-        this.villageMapper = villageMapper;
-        this.ninjaService = ninjaService;
-    }
 
     public List<VillageResponse> getAllVillages(Optional<String> kageName){
         Specification<Village> specification = VillageSpecificationBuilder.builder()
@@ -54,61 +49,36 @@ public class VillageService {
     }
 
     @Transactional
-    public VillageResponse createVillage(VillageRequest request){
-        Ninja kage = ninjaService.getNinjaEntityById(request.kageId());
-
-        validateVillageNameNotTaken(request.name());
-        validateKageAssignment(kage.getId());
-
+    public VillageResponse createVillageInternal(VillageRequest request, Ninja kage){
         Village village = villageMapper.dtoToEntity(request, kage);
         Village savedVillage = villageRepository.save(village);
         return villageMapper.entityToDto(savedVillage);
     }
 
     @Transactional
-    public VillageResponse updateVillage(Long id, VillageUpdateRequest request){
-        Village existingVillage = getVillageEntityById(id);
-
-        if (request.name() != null && !request.name().equalsIgnoreCase(existingVillage.getName())){
-            validateVillageNameNotTaken(request.name());
-            existingVillage.setName(request.name());
-        }
-
-        if (request.kageId() != null){
-            Ninja newKage = ninjaService.getNinjaEntityById(request.kageId());
-            validateKageIsNotLeadingAnyVillage(newKage, id);
-            existingVillage.setKage(newKage);
-        }
-
-        Village updatedVillage = villageRepository.save(existingVillage);
+    public VillageResponse updateVillageInternal(Village villageToUpdate){
+        Village updatedVillage = villageRepository.save(villageToUpdate);
         return villageMapper.entityToDto(updatedVillage);
     }
 
     @Transactional
-    public void deleteVillage(Long id){
-        Village villageToDelete = getVillageEntityById(id);
-
-        List<Ninja> ninjasInVillage = ninjaService.getNinjasByVillageId(id);
-
-        ninjasInVillage.forEach(ninja -> ninja.setVillage(null));
-        ninjaService.saveAllNinjas(ninjasInVillage);
-
+    public void deleteVillageInternal(Village villageToDelete){
         villageRepository.delete(villageToDelete);
     }
 
-    private void validateVillageNameNotTaken(String villageName) {
+    public void validateVillageNameNotTaken(String villageName) {
         if (villageRepository.existsByNameIgnoreCase(villageName)) {
             throw new ResourceConflictException("Village with this name already exists: " + villageName);
         }
     }
 
-    private void validateKageAssignment(Long kageId) {
+    public void validateKageAssignment(Long kageId) {
         if (villageRepository.existsByKageId(kageId)) {
             throw new ResourceConflictException("Ninja with ID " + kageId + " is already the Kage of another village.");
         }
     }
 
-    private void validateKageIsNotLeadingAnyVillage(Ninja kage, Long currentVillageId) {
+    public void validateKageIsNotLeadingAnyVillage(Ninja kage, Long currentVillageId) {
         if (villageRepository.existsByKageAndIdNot(kage, currentVillageId)) {
             throw new ResourceConflictException("Ninja with ID " + kage.getId() + " is already the Kage of another village.");
         }

@@ -5,6 +5,7 @@ import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaSelfUpdateRequest;
 import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.services.NinjaService;
+import com.konoha.NinjaMissionManager.services.NinjaVillageCoordinatorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,6 +27,7 @@ import java.util.Optional;
 @Tag(name = "Ninjas", description = "Endpoints para la gestión de Ninjas")
 public class NinjaController {
     private final NinjaService ninjaService;
+    private final NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
 
     @Operation(summary = "Obtener todos los ninjas con filtros opcionales")
     @ApiResponses(value = {
@@ -97,7 +99,7 @@ public class NinjaController {
             @RequestBody @Valid NinjaKageUpdateRequest request,
             Principal principal
     ) {
-        NinjaResponse updatedNinja = ninjaService.updateAsKage(id, request, principal);
+        NinjaResponse updatedNinja = ninjaVillageCoordinatorService.updateAsKage(id, request, principal);
         return ResponseEntity.ok(updatedNinja);
     }
 
