@@ -15,7 +15,6 @@ public record MissionCreateRequest(
         @NotBlank(message = "Description cannot be empty")
         String description,
 
-        @NotNull(message = "Reward cannot be empty")
         @PositiveOrZero(message = "Reward must be a positive number or zero")
         Integer reward,
 
