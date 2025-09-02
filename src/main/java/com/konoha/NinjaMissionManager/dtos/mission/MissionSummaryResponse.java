@@ -8,5 +8,4 @@ public record MissionSummaryResponse(
         String title,
         MissionDifficulty difficulty,
         Status status
-) {
-}
+) {}

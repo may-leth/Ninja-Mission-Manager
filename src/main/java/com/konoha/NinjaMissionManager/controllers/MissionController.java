@@ -102,7 +102,7 @@ public class MissionController {
             Principal principal
     ) {
         MissionResponse updatedMission = missionService.updateMission(id, request, principal);
-        return ResponseEntity.ok().body(updatedMission);
+        return ResponseEntity.ok(updatedMission);
     }
 
     @Operation(summary = "Eliminar una misión (solo para Kage)")

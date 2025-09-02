@@ -42,7 +42,7 @@ public class Mission {
 
     @JsonManagedReference
     @Builder.Default
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "ninja_missions",
             joinColumns = @JoinColumn(name = "mission_id"),
