@@ -1,10 +1,8 @@
 package com.konoha.NinjaMissionManager.models;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -44,7 +42,7 @@ public class Ninja {
     @Column(nullable = false)
     private boolean isAnbu;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "ninja_roles", joinColumns = @JoinColumn(name = "ninja_id"))
     private Set<Role> roles;

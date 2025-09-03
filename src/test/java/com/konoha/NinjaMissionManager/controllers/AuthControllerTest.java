@@ -217,7 +217,7 @@ public class AuthControllerTest {
             mockMvc.perform(post("/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest());
         }
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -75,32 +74,12 @@ public class MissionService {
     public MissionResponse updateMission(Long id, MissionUpdateRequest request, Principal principal){
         Ninja authenticatedNinja = ninjaService.getAuthenticatedNinja(principal);
         Mission mission = findMissionById(id);
-        boolean isKage = isKage(authenticatedNinja);
 
-        if (!isKage){
+        if (!isKage(authenticatedNinja)){
             return updateMissionAsNinja(mission, authenticatedNinja, request);
         }
 
-        if (request.title() != null && !mission.getTitle().equals(request.title())) {
-            validateMissionTitle(request.title());
-        }
-
-        missionMapper.updateEntityFromDto(request, mission);
-
-        if (request.ninjaId() != null) {
-            Set<Ninja> newAssignedNinjas = getAndValidateAssignedNinjas(request.ninjaId(), mission.getDifficulty());
-            mission.setAssignedNinjas(newAssignedNinjas);
-        }
-
-        if (request.status() != null && request.status() != mission.getStatus()) {
-            if (request.status() == Status.COMPLETED) {
-                updateCompletedMissionCount(mission);
-            }
-            mission.setStatus(request.status());
-        }
-
-        Mission updatedMission = missionRepository.save(mission);
-        return missionMapper.entityToDto(updatedMission);
+        return updateMissionAsKage(mission, request);
     }
 
     @Transactional
@@ -121,21 +100,43 @@ public class MissionService {
                 request.description() != null ||
                 request.reward() != null ||
                 request.difficulty() != null ||
-                request.ninjaId() != null;
+                request.ninjaIds() != null;
 
         if (anyOtherFieldIsPresent) {
             throw new AccessDeniedException("Only the mission status can be updated by a assigned ninja.");
         }
 
-        if (request.status() != null && request.status() != mission.getStatus()) {
-            if (request.status() == Status.COMPLETED) {
-                updateCompletedMissionCount(mission);
-            }
-            mission.setStatus(request.status());
-        }
+        updateStatusIfChanged(mission, request.status());
 
         Mission updatedMission = missionRepository.save(mission);
         return missionMapper.entityToDto(updatedMission);
+    }
+
+    private MissionResponse updateMissionAsKage(Mission mission,MissionUpdateRequest request){
+        if (request.title() != null && !mission.getTitle().equals(request.title())){
+            validateMissionTitle(request.title());
+        }
+
+        missionMapper.updateEntityFromDto(request, mission);
+
+        if (request.ninjaIds() != null){
+            Set<Ninja> newAssignedNinjas = getAndValidateAssignedNinjas(request.ninjaIds(), mission.getDifficulty());
+            mission.setAssignedNinjas(newAssignedNinjas);
+        }
+
+        updateStatusIfChanged(mission, request.status());
+
+        Mission updatedMission = missionRepository.save(mission);
+        return missionMapper.entityToDto(updatedMission);
+    }
+
+    private void updateStatusIfChanged(Mission mission, Status newStatus){
+        if (newStatus != null && newStatus != mission.getStatus()){
+            if (newStatus == Status.COMPLETED){
+                updateCompletedMissionCount(mission);
+            }
+            mission.setStatus(newStatus);
+        }
     }
 
     private void updateCompletedMissionCount(Mission mission) {
