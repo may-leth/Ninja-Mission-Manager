@@ -21,6 +21,7 @@ import java.util.List;
 public class NinjaVillageCoordinatorService {
     private final NinjaService ninjaService;
     private final VillageService villageService;
+    private final EmailService emailService;
 
     @Transactional
     public VillageResponse createVillage(VillageRequest request){
@@ -65,7 +66,16 @@ public class NinjaVillageCoordinatorService {
     @Transactional
     public NinjaResponse registerNewNinja(NinjaRegisterRequest request){
         Village village = villageService.getVillageEntityById(request.villageId());
-        return ninjaService.registerNewNinjaInternal(request, village);
+
+        NinjaResponse newNinja = ninjaService.registerNewNinjaInternal(request, village);
+
+        emailService.sendNinjaWelcomeEmail(
+                newNinja.email(),
+                newNinja.name(),
+                village.getName()
+        );
+
+        return newNinja;
     }
 
     @Transactional

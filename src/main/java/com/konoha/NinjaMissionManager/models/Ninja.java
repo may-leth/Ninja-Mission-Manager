@@ -42,7 +42,7 @@ public class Ninja {
     @Column(nullable = false)
     private boolean isAnbu;
 
-    @ElementCollection(fetch = FetchType.LAZY)
+    @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "ninja_roles", joinColumns = @JoinColumn(name = "ninja_id"))
     private Set<Role> roles;

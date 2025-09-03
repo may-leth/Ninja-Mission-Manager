@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>¡Nueva Misión Asignada!</title>
+</head>
+<body style="font-family: 'Roboto', sans-serif; background: linear-gradient(135deg, #1a1a1a, #0e2a4b); color: #f5f5f5; margin: 0; padding: 20px; text-align: center;">
+<div style="max-width: 600px; margin: 0 auto; background-color: #0e1f2c; border-radius: 12px; box-shadow: 0 0 15px #4f94d9; padding: 30px 40px;">
+    <img src="https://www.seekpng.com/png/detail/36-361294_naruto-scroll-freetoedit-cosplay.png" alt="Banner misión ninja" style="width: 100%; height: 180px; object-fit: cover; border-radius: 12px 12px 0 0; filter: drop-shadow(0 0 5px #4f94d9); margin-bottom: 20px;" />
+
+    <h1 style="font-family: 'Orbitron', sans-serif; color: #4f94d9; font-size: 2.2em; margin-bottom: 15px; text-shadow: 0 0 8px #4f94d9;">
+        ¡Nueva Misión <span th:if="${isTeamMission}">de Equipo</span> Asignada!
+    </h1>
+
+    <p style="font-size: 1.1em; line-height: 1.6; margin: 15px 0; color: #f0e6d2;">Hola <strong th:text="${ninjaName}">Ninja</strong>,</p>
+
+    <div th:if="${isTeamMission and teamSize != null and teamSize > 1}" style="background-color: rgba(79, 148, 217, 0.1); border-left: 4px solid #4f94d9; padding: 15px; margin: 20px 0; border-radius: 5px;">
+        <h3 style="color: #4f94d9; margin-top: 0;">🥷 Misión de Equipo</h3>
+        <p style="margin-bottom: 5px;">Trabajarás junto a <span th:text="${isTeamMission and teamSize != null and teamSize > 1}">X</span> compañeros ninja:</p>
+        <ul style="text-align: left; margin: 10px 0;">
+            <li th:each="teammate : ${teammates}" th:text="${teammate}" style="color: #f0e6d2;">Compañero</li>
+        </ul>
+    </div>
+
+    <div style="font-size: 1.5em; color: #f0e6d2; font-weight: bold; margin: 20px 0; padding: 15px; background-color: rgba(79, 148, 217, 0.1); border-left: 4px solid #4f94d9; border-radius: 5px;"
+         th:text="${missionTitle}">Título de la Misión</div>
+
+    <div th:if="${missionRank == 'S'}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin: 10px 0; background-color: #dc2626; color: white;">Rango: <span th:text="${missionRank}">S</span></div>
+    <div th:if="${missionRank == 'A'}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin: 10px 0; background-color: #ea580c; color: white;">Rango: <span th:text="${missionRank}">A</span></div>
+    <div th:if="${missionRank == 'B'}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin: 10px 0; background-color: #ca8a04; color: white;">Rango: <span th:text="${missionRank}">B</span></div>
+    <div th:if="${missionRank == 'C'}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin: 10px 0; background-color: #16a34a; color: white;">Rango: <span th:text="${missionRank}">C</span></div>
+    <div th:if="${missionRank == 'D'}" style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9em; margin: 10px 0; background-color: #6b7280; color: white;">Rango: <span th:text="${missionRank}">D</span></div>
+
+    <div style="background-color: rgba(79, 148, 217, 0.05); padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left; border: 1px solid rgba(79, 148, 217, 0.2);">
+        <h3 style="color: #4f94d9; margin-top: 0;">Descripción de la Misión:</h3>
+        <p th:text="${missionDescription}" style="margin-bottom: 0;">Descripción detallada de la misión...</p>
+    </div>
+
+    <div th:if="${missionRank == 'S' or missionRank == 'A'}" style="background-color: rgba(220, 38, 38, 0.1); border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 5px; color: #fecaca;">
+        <strong>⚠️ ADVERTENCIA:</strong> Esta es una misión de alto rango. Prepárate adecuadamente y considera llevar equipo de apoyo.
+    </div>
+
+    <p style="font-size: 1.1em; line-height: 1.6; margin: 15px 0; color: #f0e6d2;">
+        Tu misión ha sido oficialmente asignada. Dirígete al dashboard para ver todos los detalles y comenzar tu preparación.
+    </p>
+
+    <a th:href="${dashboardUrl}" style="display: inline-block; background-color: #4f94d9; color: #fff; padding: 14px 28px; margin-top: 25px; border-radius: 30px; text-decoration: none; font-weight: 700; font-size: 1.1em; box-shadow: 0 0 12px #4f94d9;">
+        Ver Misión Completa
+    </a>
+
+    <p style="margin-top: 40px; font-size: 0.9em; color: #bfbfbf; font-style: italic;">
+        ¡Que tengas éxito en tu misión, ninja!<br>
+        Equipo Nara Logic
+    </p>
+</div>
+</body>
+</html>
