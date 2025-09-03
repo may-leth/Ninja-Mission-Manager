@@ -7,7 +7,6 @@ import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
 import com.konoha.NinjaMissionManager.models.Village;
 import org.mapstruct.*;
-
 import java.util.Set;
 
 @Mapper(componentModel = "spring", uses = {VillageMapper.class})

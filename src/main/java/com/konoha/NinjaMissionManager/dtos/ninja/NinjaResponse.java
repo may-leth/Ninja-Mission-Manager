@@ -1,7 +1,6 @@
 package com.konoha.NinjaMissionManager.dtos.ninja;
 
 import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
-
 import java.util.Set;
 
 public record NinjaResponse(
@@ -13,5 +12,4 @@ public record NinjaResponse(
         Integer missionsCompletedCount,
         Boolean isAnbu,
         Set<MissionSummaryResponse> assignedMissions
-) {
-}
+) {}

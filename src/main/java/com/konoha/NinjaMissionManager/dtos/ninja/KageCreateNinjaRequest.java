@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-
 import java.util.Set;
 
 public record KageCreateNinjaRequest(
@@ -30,5 +29,4 @@ public record KageCreateNinjaRequest(
         Boolean isAnbu,
 
         Set<Role> roles
-) {
-}
+) {}
