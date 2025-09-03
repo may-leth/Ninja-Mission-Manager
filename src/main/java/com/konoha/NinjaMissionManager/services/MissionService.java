@@ -1,6 +1,7 @@
 package com.konoha.NinjaMissionManager.services;
 
 import com.konoha.NinjaMissionManager.dtos.mission.*;
+import com.konoha.NinjaMissionManager.dtos.ninja.NinjaEmailInfo;
 import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.exceptions.ResourceNotFoundException;
 import com.konoha.NinjaMissionManager.models.*;
@@ -22,6 +23,7 @@ public class MissionService {
     private final MissionRepository missionRepository;
     private final MissionMapper missionMapper;
     private final NinjaService ninjaService;
+    private final EmailService emailService;
 
     public List<MissionSummaryResponse> getAllMissions(Optional<MissionDifficulty> difficulty, Optional<Status> status, Optional<Long> assignToNinjaId, Principal principal){
         Ninja authenticatedNinja = ninjaService.getAuthenticatedNinja(principal);
@@ -66,6 +68,17 @@ public class MissionService {
         newMission.setCreationDate(LocalDateTime.now());
 
         Mission savedMission = missionRepository.save(newMission);
+
+        List<NinjaEmailInfo> ninjaTeamInfo = savedMission.getAssignedNinjas().stream()
+                .map(ninja -> new NinjaEmailInfo(ninja.getEmail(), ninja.getName()))
+                .toList();
+
+        emailService.sendMissionAssignmentEmail(
+                ninjaTeamInfo,
+                savedMission.getTitle(),
+                savedMission.getDescription(),
+                savedMission.getDifficulty().toString()
+        );
 
         return missionMapper.entityToDto(savedMission);
     }
