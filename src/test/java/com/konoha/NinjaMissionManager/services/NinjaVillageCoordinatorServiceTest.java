@@ -47,6 +47,9 @@ public class NinjaVillageCoordinatorServiceTest {
     @Mock
     private NinjaService ninjaService;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
 
@@ -367,6 +370,7 @@ public class NinjaVillageCoordinatorServiceTest {
 
             verify(villageService).getVillageEntityById(99L);
             verify(ninjaService).registerNewNinjaInternal(ninjaRegisterRequest, konoha);
+            verify(emailService).sendNinjaWelcomeEmail(eq(ninjaResponse.email()), eq(ninjaResponse.name()), eq(konoha.getName()));
             verifyNoMoreInteractions(villageService, ninjaService);
         }
 
