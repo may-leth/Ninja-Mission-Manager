@@ -17,7 +17,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
@@ -68,16 +67,7 @@ public class NinjaService implements UserDetailsService {
     public NinjaResponse registerNewNinjaInternal(NinjaRegisterRequest request, Village village){
         validateEmailNotTaken(request.email());
 
-        Ninja ninjaToSave = Ninja.builder()
-                .name(request.name())
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
-                .rank(Rank.GENIN)
-                .village(village)
-                .isAnbu(false)
-                .roles(Set.of(Role.ROLE_NINJA_USER))
-                .missionsCompletedCount(0)
-                .build();
+        Ninja ninjaToSave = buildNinjaForRegistration(request, village);
 
         return persistAndMapNinja(ninjaToSave);
     }
@@ -86,16 +76,7 @@ public class NinjaService implements UserDetailsService {
     public NinjaResponse createNinjaInternal(KageCreateNinjaRequest request, Village village){
         validateEmailNotTaken(request.email());
 
-        Ninja ninjaToSave = Ninja.builder()
-                .name(request.name())
-                .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
-                .rank(request.rank())
-                .village(village)
-                .isAnbu(request.isAnbu())
-                .roles(request.roles())
-                .missionsCompletedCount(0)
-                .build();
+        Ninja ninjaToSave = buildNinjaForKageCreation(request, village);
 
         return persistAndMapNinja(ninjaToSave);
     }
@@ -106,11 +87,7 @@ public class NinjaService implements UserDetailsService {
         validateOwnerAccess(requestedId, authenticatedNinja);
 
         Ninja ninjaToUpdate = findNinjaById(requestedId);
-        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
-
-        ninjaToUpdate.setName(request.name());
-        ninjaToUpdate.setEmail(request.email());
-        ninjaToUpdate.setPassword(passwordEncoder.encode(request.password()));
+        updateNinjaSelfData(ninjaToUpdate, request);
 
         return persistAndMapNinja(ninjaToUpdate);
     }
@@ -118,14 +95,8 @@ public class NinjaService implements UserDetailsService {
     @Transactional
     public NinjaResponse updateAsKageInternal(Long requestedId, NinjaKageUpdateRequest request, Village village) {
         Ninja ninjaToUpdate = findNinjaById(requestedId);
-        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
 
-        ninjaToUpdate.setName(request.name());
-        ninjaToUpdate.setEmail(request.email());
-        ninjaToUpdate.setRank(request.rank());
-        ninjaToUpdate.setAnbu(request.isAnbu());
-        ninjaToUpdate.setVillage(village);
-        ninjaToUpdate.setRoles(request.roles());
+        updateNinjasAsKage(ninjaToUpdate, request, village);
 
         return persistAndMapNinja(ninjaToUpdate);
     }
@@ -148,12 +119,55 @@ public class NinjaService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return ninjaRepository.findByEmail(email)
-                .map(ninja -> new NinjaUserDetail(ninja))
-                .orElseThrow(() -> new ResourceNotFoundException("Ninja not found with the email: " + email));
+                .map(NinjaUserDetail::new)
+                .orElseThrow(() -> new UsernameNotFoundException("Ninja not found with the email: " + email));
     }
 
     public void saveAllNinjas(List<Ninja> ninjas){
         ninjaRepository.saveAll(ninjas);
+    }
+
+    private Ninja buildNinjaForRegistration(NinjaRegisterRequest request, Village village){
+        return Ninja.builder()
+                .name(request.name())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .rank(Rank.GENIN)
+                .village(village)
+                .isAnbu(false)
+                .roles(Set.of(Role.ROLE_NINJA_USER))
+                .missionsCompletedCount(0)
+                .build();
+    }
+
+    private Ninja buildNinjaForKageCreation(KageCreateNinjaRequest request, Village village){
+        return Ninja.builder()
+                .name(request.name())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .rank(request.rank())
+                .village(village)
+                .isAnbu(request.isAnbu())
+                .roles(request.roles())
+                .missionsCompletedCount(0)
+                .build();
+    }
+
+    private void updateNinjaSelfData(Ninja ninjaToUpdate, NinjaSelfUpdateRequest request){
+        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
+        ninjaToUpdate.setName(request.name());
+        ninjaToUpdate.setEmail(request.email());
+        ninjaToUpdate.setPassword(passwordEncoder.encode(request.password()));
+    }
+
+    private void updateNinjasAsKage(Ninja ninjaToUpdate, NinjaKageUpdateRequest request, Village village){
+        validateEmailChange(request.email(), ninjaToUpdate.getEmail());
+        ninjaToUpdate.setName(request.name());
+        ninjaToUpdate.setEmail(request.email());
+        ninjaToUpdate.setRank(request.rank());
+        ninjaToUpdate.setAnbu(request.isAnbu());
+        ninjaToUpdate.setVillage(village);
+        ninjaToUpdate.setRoles(request.roles());
     }
 
     public Ninja getAuthenticatedNinja(Principal principal) {

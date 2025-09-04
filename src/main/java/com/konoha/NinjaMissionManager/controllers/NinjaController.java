@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
@@ -58,7 +57,7 @@ public class NinjaController {
             @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('KAGE') || (#id == authentication.principal.id)")
+    @PreAuthorize("hasRole('KAGE') or hasRole('NINJA_USER')")
     public ResponseEntity<NinjaResponse> getNinjaById(
             @Parameter(description = "ID del ninja a buscar")
             @PathVariable Long id,

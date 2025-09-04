@@ -5,7 +5,6 @@ import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-
 import java.util.Optional;
 
 @NoArgsConstructor

@@ -19,5 +19,4 @@ public record NinjaRegisterRequest(
 
         @NotNull(message = "Village ID is required")
         Long villageId
-) {
-}
+) {}

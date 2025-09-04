@@ -4,7 +4,6 @@ import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-
 import java.util.Set;
 
 public record NinjaKageUpdateRequest(
@@ -18,5 +17,4 @@ public record NinjaKageUpdateRequest(
         Long villageId,
         Boolean isAnbu,
         Set<Role> roles
-) {
-}
+) {}

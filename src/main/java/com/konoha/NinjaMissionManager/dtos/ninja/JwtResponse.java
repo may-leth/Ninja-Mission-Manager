@@ -1,4 +1,3 @@
 package com.konoha.NinjaMissionManager.dtos.ninja;
 
-public record JwtResponse(String token) {
-}
+public record JwtResponse(String token) {}

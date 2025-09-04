@@ -3,8 +3,6 @@ package com.konoha.NinjaMissionManager.controllers;
 import com.konoha.NinjaMissionManager.dtos.village.VillageRequest;
 import com.konoha.NinjaMissionManager.dtos.village.VillageResponse;
 import com.konoha.NinjaMissionManager.dtos.village.VillageUpdateRequest;
-import com.konoha.NinjaMissionManager.models.Ninja;
-import com.konoha.NinjaMissionManager.services.NinjaService;
 import com.konoha.NinjaMissionManager.services.NinjaVillageCoordinatorService;
 import com.konoha.NinjaMissionManager.services.VillageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,8 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 

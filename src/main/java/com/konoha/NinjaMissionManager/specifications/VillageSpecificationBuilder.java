@@ -3,7 +3,6 @@ package com.konoha.NinjaMissionManager.specifications;
 import com.konoha.NinjaMissionManager.models.Village;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-
 import java.util.Optional;
 
 @NoArgsConstructor
