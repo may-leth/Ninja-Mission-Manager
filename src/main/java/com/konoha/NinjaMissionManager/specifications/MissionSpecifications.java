@@ -4,7 +4,6 @@ import com.konoha.NinjaMissionManager.models.Mission;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
 import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 public class MissionSpecifications {

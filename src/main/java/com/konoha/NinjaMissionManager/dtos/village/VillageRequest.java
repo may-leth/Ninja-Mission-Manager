@@ -9,5 +9,4 @@ public record VillageRequest(
 
         @NotNull(message = "Kage ID is required")
         Long kageId
-) {
-}
+) {}

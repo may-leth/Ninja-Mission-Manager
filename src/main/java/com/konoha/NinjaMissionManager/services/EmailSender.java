@@ -1,7 +1,6 @@
 package com.konoha.NinjaMissionManager.services;
 
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaEmailInfo;
-
 import java.util.List;
 
 public interface EmailSender {
