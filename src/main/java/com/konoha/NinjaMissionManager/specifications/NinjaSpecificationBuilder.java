@@ -4,7 +4,6 @@ import com.konoha.NinjaMissionManager.models.Ninja;
 import com.konoha.NinjaMissionManager.models.Rank;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
-
 import java.util.Optional;
 
 @NoArgsConstructor

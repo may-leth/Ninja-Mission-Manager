@@ -1,17 +1,24 @@
 package com.konoha.NinjaMissionManager.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.konoha.NinjaMissionManager.dtos.mission.MissionSummaryResponse;
 import com.konoha.NinjaMissionManager.dtos.ninja.KageCreateNinjaRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaLoginRequest;
 import com.konoha.NinjaMissionManager.dtos.ninja.NinjaRegisterRequest;
+import com.konoha.NinjaMissionManager.dtos.ninja.NinjaResponse;
+import com.konoha.NinjaMissionManager.exceptions.ResourceConflictException;
 import com.konoha.NinjaMissionManager.models.Rank;
 import com.konoha.NinjaMissionManager.models.Role;
+import com.konoha.NinjaMissionManager.models.Village;
+import com.konoha.NinjaMissionManager.services.EmailService;
+import com.konoha.NinjaMissionManager.services.NinjaVillageCoordinatorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -19,7 +26,12 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,6 +46,12 @@ public class AuthControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private NinjaVillageCoordinatorService ninjaVillageCoordinatorService;
+
+    @MockBean
+    private EmailService emailService;
 
     private NinjaRegisterRequest createNinjaRegisterRequest() {
         return new NinjaRegisterRequest("Nuevo Ninja", "nuevo.ninja@test.com", "Password123#", 1L);
@@ -60,7 +78,11 @@ public class AuthControllerTest {
         @Test
         @DisplayName("Should register a new ninja and return CREATED status")
         void shouldRegisterNewNinjaSuccessfully() throws Exception {
+            Village konoha = new Village(1L, "konoha", null);
             NinjaRegisterRequest request = createNinjaRegisterRequest();
+            NinjaResponse response = new NinjaResponse(1L, request.name(), request.email(), Rank.GENIN.toString(), konoha.getName(), 0, false, Set.of());
+
+            when(ninjaVillageCoordinatorService.registerNewNinja(any(NinjaRegisterRequest.class))).thenReturn(response);
 
             mockMvc.perform(post("/register")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -68,8 +90,10 @@ public class AuthControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.name").value(request.name()))
                     .andExpect(jsonPath("$.email").value(request.email()))
-                    .andExpect(jsonPath("$.village").value("Konoha"))
+                    .andExpect(jsonPath("$.village").value("konoha"))
                     .andExpect(jsonPath("$.rank").value("GENIN"));
+
+            verify(ninjaVillageCoordinatorService).registerNewNinja(request);
         }
 
         @Test
@@ -93,16 +117,19 @@ public class AuthControllerTest {
         @DisplayName("Should return CONFLICT status when email is already registered")
         void shouldFailWhenEmailExists() throws Exception{
             NinjaRegisterRequest request = new NinjaRegisterRequest(
-                    "Nuevo Naruto",
-                    "naruto@gmail.com",
+                    "Nuevo Itachi",
+                    "itachi@gmail.com",
                     "Password123#",
                     1L);
+
+            when(ninjaVillageCoordinatorService.registerNewNinja(any(NinjaRegisterRequest.class)))
+                    .thenThrow(new ResourceConflictException("Email is already registered: itachi@gmail.com"));
 
             mockMvc.perform(post("/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.message").value("Email is already registered: naruto@gmail.com"));
+                    .andExpect(jsonPath("$.message").value("Email is already registered: itachi@gmail.com"));
         }
 
         @Test
@@ -140,6 +167,20 @@ public class AuthControllerTest {
                     true,
                     Set.of(Role.ROLE_NINJA_USER, Role.ROLE_ANBU)
             );
+            Village konoha = new Village(1L, "konoha", null);
+            Set<MissionSummaryResponse> emptyMissions = Set.of();
+            NinjaResponse response = new NinjaResponse(
+                    1L,
+                    request.name(),
+                    request.email(),
+                    request.rank().toString(),
+                    konoha.getName(),
+                    0,
+                    request.isAnbu(),
+                    emptyMissions
+            );
+
+            when(ninjaVillageCoordinatorService.createNinja(any(KageCreateNinjaRequest.class))).thenReturn(response);
 
             mockMvc.perform(post("/register/kage")
                             .contentType(MediaType.APPLICATION_JSON)

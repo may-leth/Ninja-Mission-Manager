@@ -43,6 +43,9 @@ public class MissionServiceTest {
     @Mock
     private Principal principal;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private MissionService missionService;
 
@@ -233,6 +236,8 @@ public class MissionServiceTest {
             verify(ninjaService).getNinjaEntityById(naruto.getId());
             verify(missionRepository).save(any(Mission.class));
             verify(missionMapper).entityToDto(any(Mission.class));
+
+            verify(emailService).sendMissionAssignmentEmail(anyList(), anyString(), anyString(), anyString());
         }
 
         @Test
@@ -246,20 +251,25 @@ public class MissionServiceTest {
                     Set.of(sasuke.getId())
             );
             Mission mission = new Mission();
+            mission.setTitle(highRankRequest.title());
+            mission.setDescription(highRankRequest.description());
+            mission.setReward(highRankRequest.reward());
+            mission.setDifficulty(highRankRequest.difficulty());
+            mission.setAssignedNinjas(Set.of(sasuke));
 
             when(ninjaService.getAuthenticatedNinja(principal)).thenReturn(kage);
             when(missionRepository.existsByTitle(anyString())).thenReturn(false);
             when(ninjaService.getNinjaEntityById(sasuke.getId())).thenReturn(sasuke);
             when(missionMapper.dtoToEntity(any(MissionCreateRequest.class))).thenReturn(mission);
-            when(missionRepository.save(any(Mission.class))).thenReturn(new Mission());
+            when(missionRepository.save(mission)).thenReturn(mission);
             when(missionMapper.entityToDto(any(Mission.class))).thenReturn(new MissionResponse(
                     1L,"Mision de alto rango","Detener a un ninja renegado",5000, MissionDifficulty.A, Status.PENDING, LocalDateTime.now(), Set.of()));
 
             missionService.createMission(highRankRequest, principal);
 
-            verify(missionRepository).save(any(Mission.class));
-            verify(missionMapper).entityToDto(any(Mission.class));
-
+            verify(missionRepository).save(mission);
+            verify(missionMapper).entityToDto(mission);
+            verify(emailService).sendMissionAssignmentEmail(anyList(), eq(highRankRequest.title()), eq(highRankRequest.description()), eq(highRankRequest.difficulty().toString()));
         }
 
         @Test

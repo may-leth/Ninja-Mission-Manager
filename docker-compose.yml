@@ -1,0 +1,59 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ninjamissionmanager-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ninjamissionmanager
+    ports:
+      - "3307:3306"
+    volumes:
+      #- mysql_data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - ninja-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      timeout: 10s
+      retries: 10
+      interval: 30s
+      start_period: 30s
+
+  ninja-app:
+    build: .
+    container_name: ninjamissionmanager-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Variables de entorno específicas para la configuración
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+
+      # Configuración de JPA/Hibernate para Docker
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_SQL_INIT_MODE: never
+
+      # Variables de email
+      EMAIL: ${EMAIL}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+
+      # Configuración adicional
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ninja-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  ninja-network:
+    driver: bridge

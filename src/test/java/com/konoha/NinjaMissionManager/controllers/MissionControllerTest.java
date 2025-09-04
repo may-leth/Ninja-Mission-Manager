@@ -5,12 +5,14 @@ import com.konoha.NinjaMissionManager.dtos.mission.MissionCreateRequest;
 import com.konoha.NinjaMissionManager.dtos.mission.MissionUpdateRequest;
 import com.konoha.NinjaMissionManager.models.MissionDifficulty;
 import com.konoha.NinjaMissionManager.models.Status;
+import com.konoha.NinjaMissionManager.services.EmailService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
@@ -20,6 +22,8 @@ import java.util.Collections;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,6 +43,9 @@ public class MissionControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private EmailService emailService;
 
     @Nested
     @DisplayName("GET /missions: Retrieve all missions with filters")
@@ -163,6 +170,8 @@ public class MissionControllerTest {
                     MissionDifficulty.C,
                     Set.of(1L, 2L)
             );
+
+            doNothing().when(emailService).sendMissionAssignmentEmail(anyList(), anyString(), anyString(), anyString());
 
             mockMvc.perform(post("/missions")
                             .contentType(MediaType.APPLICATION_JSON)
