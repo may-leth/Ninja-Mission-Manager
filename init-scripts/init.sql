@@ -1,23 +1,17 @@
--- init.sql
--- Script de inicialización para Ninja Mission Manager
-
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Eliminar tablas existentes
 DROP TABLE IF EXISTS ninja_missions;
 DROP TABLE IF EXISTS ninja_roles;
 DROP TABLE IF EXISTS missions;
 DROP TABLE IF EXISTS ninjas;
 DROP TABLE IF EXISTS villages;
 
--- Crear tabla villages (sin la referencia circular inicialmente)
 CREATE TABLE villages (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     kage_id BIGINT DEFAULT NULL
 );
 
--- Crear tabla ninjas
 CREATE TABLE ninjas (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
@@ -30,12 +24,10 @@ CREATE TABLE ninjas (
     FOREIGN KEY (village_id) REFERENCES villages(id) ON DELETE SET NULL
 );
 
--- Agregar la foreign key para kage_id después de crear ninjas
 ALTER TABLE villages
 ADD CONSTRAINT fk_villages_kage
 FOREIGN KEY (kage_id) REFERENCES ninjas(id) ON DELETE SET NULL;
 
--- Crear tabla ninja_roles
 CREATE TABLE ninja_roles (
     ninja_id BIGINT NOT NULL,
     roles VARCHAR(50) NOT NULL,
@@ -43,7 +35,6 @@ CREATE TABLE ninja_roles (
     FOREIGN KEY (ninja_id) REFERENCES ninjas(id) ON DELETE CASCADE
 );
 
--- Crear tabla missions
 CREATE TABLE missions (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
@@ -54,7 +45,6 @@ CREATE TABLE missions (
     creation_date DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Crear tabla ninja_missions
 CREATE TABLE ninja_missions (
     ninja_id BIGINT NOT NULL,
     mission_id BIGINT NOT NULL,
@@ -63,7 +53,6 @@ CREATE TABLE ninja_missions (
     FOREIGN KEY (mission_id) REFERENCES missions(id) ON DELETE CASCADE
 );
 
--- Datos de ejemplo (opcional)
 INSERT INTO villages (name) VALUES
 ('Konoha'),
 ('Suna'),
@@ -80,7 +69,6 @@ INSERT INTO ninjas (name, email, password, missions_completed_count, ninja_rank,
 ('Tsunade', 'tsunade@gmail.com', '$2a$10$PaothPnYKjsDL/g9VoRB5OKcd8DGaKC8RirmTHqe0t5hjsSV0yaV.', 1500, 'KAGE', false, 1),
 ('Itachi Uchiha', 'itachi@gmail.com', '$2a$10$cHRONQT1bOveD7hM1FwUJOIxvvKRisIyksrjzf0mxQ3nTJU0Shoya', 2000, 'JONIN', true, 1);
 
--- Actualizar kage_id ahora que tenemos ninjas
 UPDATE villages SET kage_id = 6 WHERE name = 'Konoha';
 UPDATE villages SET kage_id = 5 WHERE name = 'Suna';
 

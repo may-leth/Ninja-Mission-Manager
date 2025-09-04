@@ -14,7 +14,6 @@ INSERT INTO ninjas (name, email, password, missions_completed_count, ninja_rank,
 ('Tsunade', 'tsunade@gmail.com', '$2a$10$PaothPnYKjsDL/g9VoRB5OKcd8DGaKC8RirmTHqe0t5hjsSV0yaV.', 1500, 'KAGE', false, 1),
 ('Itachi Uchiha', 'itachi@gmail.com', '$2a$10$cHRONQT1bOveD7hM1FwUJOIxvvKRisIyksrjzf0mxQ3nTJU0Shoya', 2000, 'JONIN', true, 1);
 
--- Actualizar kage_id ahora que tenemos ninjas
 UPDATE villages SET kage_id = 6 WHERE name = 'Konoha';
 UPDATE villages SET kage_id = 5 WHERE name = 'Suna';
 

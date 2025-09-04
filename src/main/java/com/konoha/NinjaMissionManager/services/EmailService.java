@@ -6,15 +6,14 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
-
 import javax.naming.*;
 import java.io.UnsupportedEncodingException;
-import java.util.Hashtable;
 import java.util.List;
 
 @Service
@@ -57,7 +56,7 @@ public class EmailService implements EmailSender {
             mailSender.send(mimeMessage);
             log.info("Correo de bienvenida enviado con éxito a: {}", toNinja);
 
-        } catch (MessagingException | UnsupportedEncodingException exception) {
+        } catch (MessagingException | UnsupportedEncodingException | MailException exception) {
             log.error("Error al enviar el correo de bienvenida a {}: {}", toNinja, exception.getMessage(), exception);
         }
     }
@@ -103,7 +102,7 @@ public class EmailService implements EmailSender {
                 mailSender.send(mimeMessage);
                 log.info("Correo de misión de equipo enviado con éxito a: {} ({}) para la misión: {}", ninja.name(), ninja.email(), missionTitle);
 
-            } catch (MessagingException | UnsupportedEncodingException exception){
+            } catch (MessagingException | UnsupportedEncodingException | MailException exception){
                 log.error("Error al enviar correo de misión de equipo a {} ({}): {}", ninja.name(), ninja.email(), exception.getMessage(), exception);
             }
         }
