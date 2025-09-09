@@ -114,7 +114,14 @@
             <scope>runtime</scope>
         </dependency>
 	</dependencies>
-
+    <profiles>
+        <profile>
+            <id>test</id>
+            <build>
+                <directory>/tmp/build</directory>
+            </build>
+        </profile>
+    </profiles>
 	<build>
 		<plugins>
 			<plugin>
