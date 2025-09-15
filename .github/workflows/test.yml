@@ -24,7 +24,7 @@ jobs:
       # Step 3: Execute the test suite using docker-compose
       # Runs tests in isolated container environment matching production
       - name: Run tests with docker-compose
-        run: docker compose -f docker-compose-test.yml up --quiet-pull --abort-on-container-exit --exit-code-from dreamroute-test
+        run: docker compose -f docker-compose-test.yml up --quiet-pull --abort-on-container-exit --exit-code-from test-db
         # --quiet-pull: Reduce output noise during image pulls
         # --abort-on-container-exit: Stop all containers when any container exits
         # --exit-code-from: Use exit code from specified container (dreamroute-test)
