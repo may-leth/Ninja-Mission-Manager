@@ -25,6 +25,7 @@ By blending the spirit of the shinobi world with modern software craftsmanship, 
 - [📦 Dependencies](#-dependencies)
 - [🔒 Security](#-security)
 - [📚 API Documentation](#-api-documentation)
+- [🐋 Docker and CI implementation](#-docker-and-CI-implementation)
 - [🧪 Testing](#-testing)
 - [👥 Contributors](#-contributors)
 
@@ -172,6 +173,64 @@ To view the documentation, simply navigate to the following URL in your web brow
 http://localhost:8080/swagger-ui.html
 ```
 From there, you can explore the API, view request/response examples, and even test the endpoints directly from the browser.
+
+### 🐋 Docker and CI documentation
+# 🐋 Docker Guide
+
+This section describes how to run the application and its database using **Docker Compose**. This creates an isolated, fast, and consistent development environment, eliminating the need to install dependencies like MySQL or a Java environment locally.
+
+## 📋 Prerequisites
+Make sure you have **Docker** and **Docker Compose** installed on your system.
+-   [**Docker**](https://docs.docker.com/get-docker/)
+-   [**Docker Compose**](https://docs.docker.com/compose/install/)
+
+### 🚀 Setup and Execution
+The application uses an environment variable file for database and other service configurations.
+
+1.  **Create the `.env` file:**
+    Copy the example file and configure the environment variables.
+    ```bash
+    cp .env.example .env
+    ```
+    Open the `.env` file and adjust the values if necessary. By default, these are:
+    -   `DB_URL=jdbc:mysql://mysql:3306/ninjamissionmanager`
+    -   `DB_USERNAME=root`
+    -   `DB_PASSWORD=root`
+    -   `EMAIL=your_email@example.com`
+    -   `EMAIL_PASSWORD=your_email_password`
+
+2.  **Start the services:**
+    Run the following command to build the application image and start the application and MySQL database containers.
+    ```bash
+    docker compose up --build -d
+    ```
+    -   `--build`: Forces Docker Compose to rebuild the application image before starting the containers.
+    -   `-d`: Runs the containers in the background ("detached" mode).
+
+3.  **Check the status:**
+    To see the running containers, use the following command:
+    ```bash
+    docker compose ps
+    ```
+    You should see both the `ninjamissionmanager-app` and `ninjamissionmanager-mysql` services in a `healthy` state.
+
+---
+
+### 🧪 Running Tests
+If you need to run the project's automated tests in an isolated Docker environment, you can use the `docker-compose-test.yml` file.
+```bash
+docker compose -f docker-compose-test.yml up --quiet-pull --abort-on-container-exit --exit-code-from test
+```
+This command will bring up a test database, run the tests, and stop all services upon completion. The exit code will reflect the result of the tests.
+
+---
+
+### 🌐 Continuous Integration (CI)
+This project uses **GitHub Actions** to automate the development lifecycle. The workflows are responsible for:
+
+-   **Test (pull request):** Runs the test suite every time a pull request is opened to ensure changes don't break existing functionality.
+-   **Build (main branch):** Builds the application's Docker image and pushes it to Docker Hub whenever a change is merged into the `main` branch.
+-   **Release (tags):** Executes the full test suite and, if the tests pass, builds a production Docker image and tags it with the version number (`v1.0.0`, `v1.0.1`, etc.).
 
 ### 🧪 Testing
 
